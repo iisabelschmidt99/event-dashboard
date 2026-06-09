@@ -1,148 +1,132 @@
 // FENYX Event-Dashboard — HubSpot API Proxy
-// Netlify Function: /.netlify/functions/hubspot
-//
-// Wichtig: Marketing Events sind KEIN Standard-CRM-Objekt.
-// Korrekte Endpoints:
-//   Events lesen:   POST /crm/v3/objects/marketing_events/search
-//   Teilnehmer:     GET  /marketing/v3/marketing-events/{id}/attendees
+// Korrekte Endpoints laut HubSpot Marketing Events API Doku (2026-03):
+//   Events:      GET  /marketing/marketing-events/2026-03
+//   Teilnehmer:  GET  /marketing/marketing-events/2026-03/associations/{eventId}/lists
+//                dann GET /contacts/v1/lists/{listId}/contacts/all
 
-const BASE    = 'https://api.hubapi.com';
-const LIST_ID = '202'; // Segment-Liste aller Event-Teilnehmer
+const BASE     = 'https://api.hubapi.com';
+const ME_BASE  = `${BASE}/marketing/marketing-events/2026-03`; // Korrekte API-Version
+const LIST_202 = '202'; // Segment-Liste aller Teilnehmer (Fallback)
 
 exports.handler = async function(event) {
   const p   = event.queryStringParameters || {};
   const tok = (process.env.HUBSPOT_TOKEN || '').trim();
 
-  if (event.httpMethod === 'OPTIONS') {
-    return res(204, '');
-  }
+  if (event.httpMethod === 'OPTIONS') return res(204, '');
 
-  // ── ping ─────────────────────────────────────────────────────────────────
+  // ── ping ──────────────────────────────────────────────────────────────────
   if (p.action === 'ping') {
-    return res(200, { ok: true, hasToken: !!tok, tokenLen: tok.length, ts: new Date().toISOString() });
+    return res(200, { ok: true, hasToken: !!tok, ts: new Date().toISOString() });
   }
 
   if (!tok) {
-    return res(500, { error: 'HUBSPOT_TOKEN nicht gesetzt. Netlify → Environment variables → HUBSPOT_TOKEN → Redeploy.' });
+    return res(500, { error: 'HUBSPOT_TOKEN nicht gesetzt. Netlify → Environment variables → Redeploy.' });
   }
 
   const h = { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' };
 
   try {
 
-    // ── events ──────────────────────────────────────────────────────────────
-    // WICHTIG: GET /crm/v3/objects/marketing_events ist NICHT unterstützt.
-    // Stattdessen: POST /crm/v3/objects/marketing_events/search
+    // ── events ───────────────────────────────────────────────────────────────
+    // GET /marketing/marketing-events/2026-03  (nicht die CRM Objects API!)
     if (p.action === 'events') {
-      const body = {
-        filterGroups: [],
-        properties: [
-          'hs_event_name',
-          'hs_event_type',
-          'hs_event_description',
-          'hs_start_datetime',
-          'hs_end_datetime',
-          'hs_event_status_v2',
-          'hs_registrations',
-          'hs_noshows',
-          'hs_event_organizer'
-        ],
-        limit: 100,
-        sorts: [{ propertyName: 'hs_start_datetime', direction: 'ASCENDING' }]
-      };
+      const r = await fetch(`${ME_BASE}?limit=100`, { headers: h });
+      const body = await r.text();
+      if (!r.ok) return res(r.status, { _error: tryParse(body) });
 
-      const r = await fetch(
-        `${BASE}/crm/v3/objects/marketing_events/search`,
-        { method: 'POST', headers: h, body: JSON.stringify(body) }
-      );
-      const text = await r.text();
-      if (!r.ok) return res(r.status, { _error: tryParse(text), _endpoint: 'marketing_events/search' });
-      return res(200, tryParse(text));
+      // Response-Format normalisieren → Dashboard-Format
+      const data = tryParse(body);
+      const normalized = (data.results || []).map(e => ({
+        id:     String(e.objectId || e.id || ''),
+        name:   e.eventName || '',
+        type:   e.eventType || '',
+        desc:   e.eventDescription || '',
+        date:   (e.startDateTime || '').split('T')[0],
+        status: e.eventCancelled ? 'cancelled' : e.eventCompleted ? 'completed' : 'upcoming',
+        regs:   parseInt(e.registrants || 0),
+        org:    e.eventOrganizer || ''
+      }));
+
+      return res(200, { results: normalized, total: normalized.length });
     }
 
-    // ── event_contacts ───────────────────────────────────────────────────────
+    // ── event_contacts ────────────────────────────────────────────────────────
     if (p.action === 'event_contacts') {
       if (!p.eventId) return res(400, { error: 'eventId fehlt' });
+      const eid = p.eventId;
 
-      const eid    = p.eventId;
-      const cProps = ['firstname', 'lastname', 'email', 'company', 'createdate'];
-
-      // Methode 1: Marketing Events Attendees API
-      // Für CRM-UI erstellte Events = hs_object_id als externalEventId
-      const STATES = ['REGISTERED', 'ATTENDED', 'ATTENDED_ONLINE', 'CANCELLED', 'NO_SHOW'];
-      for (const state of STATES) {
-        const r = await fetch(
-          `${BASE}/marketing/v3/marketing-events/${encodeURIComponent(eid)}/attendees?state=${state}&limit=100`,
-          { headers: h }
-        );
-        if (!r.ok) continue;
-        const d = await r.json();
-        const results = d.results || [];
-        if (results.length > 0) {
-          const contacts = results.map(a => ({
-            id: String(a.vid || a.contactId || a.id || ''),
-            properties: {
-              firstname:  a.firstName  || a.properties?.firstname  || '',
-              lastname:   a.lastName   || a.properties?.lastname   || '',
-              email:      a.email      || a.properties?.email      || '',
-              company:    a.company    || a.properties?.company    || '',
-              createdate: a.registeredAt || a.joinedAt || ''
-            }
-          })).filter(c => c.id);
-          if (contacts.length > 0)
-            return res(200, { results: contacts, total: contacts.length, _method: 'attendees_' + state });
-        }
-      }
-
-      // Methode 2: CRM Associations v4
-      const r2 = await fetch(
-        `${BASE}/crm/v4/objects/marketing_events/${encodeURIComponent(eid)}/associations/contacts?limit=100`,
+      // ── Methode 1: Event-assoziierte Listen ──────────────────────────────
+      // GET /marketing/marketing-events/2026-03/associations/{marketingEventId}/lists
+      const listsR = await fetch(
+        `${ME_BASE}/associations/${encodeURIComponent(eid)}/lists`,
         { headers: h }
       );
-      if (r2.ok) {
-        const d2  = await r2.json();
-        const ids = (d2.results || []).map(x => String(x.toObjectId || x.id)).filter(Boolean);
-        if (ids.length > 0) {
-          const batch = await batchContacts(ids, cProps, h);
-          if (batch.length > 0)
-            return res(200, { results: batch, total: batch.length, _method: 'assoc_v4' });
+      if (listsR.ok) {
+        const listsData = await listsR.json();
+        const lists     = listsData.results || [];
+
+        for (const list of lists) {
+          const cR = await fetch(
+            `${BASE}/contacts/v1/lists/${list.listId}/contacts/all?count=100&property=firstname&property=lastname&property=email&property=company&property=createdate`,
+            { headers: h }
+          );
+          if (!cR.ok) continue;
+          const cData    = await cR.json();
+          const contacts = (cData.contacts || []).map(mapListContact);
+          if (contacts.length > 0) {
+            return res(200, { results: contacts, total: contacts.length, _method: 'event_list_' + list.listId });
+          }
         }
       }
 
-      // Methode 3: Segment-Liste 202 + Batch-Associations
+      // ── Methode 2: Attendance Participations ─────────────────────────────
+      // GET /marketing/marketing-events/2026-03/participations/contacts/{id}/breakdown
+      // Ansatz: Alle Kontakte aus Segment-Liste 202 holen + nach Event filtern
       const listR = await fetch(
-        `${BASE}/contacts/v1/lists/${LIST_ID}/contacts/all?count=100&property=firstname&property=lastname&property=email&property=company&property=createdate`,
+        `${BASE}/contacts/v1/lists/${LIST_202}/contacts/all?count=100&property=firstname&property=lastname&property=email&property=company&property=createdate`,
         { headers: h }
       );
       if (listR.ok) {
-        const listData     = await listR.json();
-        const listContacts = listData.contacts || [];
+        const listData  = await listR.json();
+        const allContacts = listData.contacts || [];
 
-        if (listContacts.length > 0) {
-          // Batch: welche Events hat jeder Kontakt?
-          const contactIds = listContacts.map(c => String(c.vid));
-          const assocR     = await fetch(
-            `${BASE}/crm/v4/associations/contacts/marketing_events/batch/read`,
-            { method: 'POST', headers: h, body: JSON.stringify({ inputs: contactIds.map(id => ({ id })) }) }
+        // Für jeden Kontakt prüfen ob er an diesem Event teilgenommen hat
+        // (batch-weise, max 10 gleichzeitig um Rate Limits zu vermeiden)
+        const matched = [];
+        for (let i = 0; i < allContacts.length; i += 10) {
+          const batch  = allContacts.slice(i, i + 10);
+          const checks = await Promise.all(
+            batch.map(async c => {
+              const r = await fetch(
+                `${ME_BASE}/participations/contacts/${c.vid}/breakdown`,
+                { headers: h }
+              );
+              if (!r.ok) return null;
+              const d = await r.json();
+              const events = (d.results || []).map(x =>
+                String(x.associations?.marketingEvent?.marketingEventId || '')
+              );
+              return events.includes(String(eid)) ? c : null;
+            })
           );
+          matched.push(...checks.filter(Boolean));
+        }
 
-          if (assocR.ok) {
-            const assocData = await assocR.json();
-            const matched   = new Set();
-            for (const result of (assocData.results || [])) {
-              const evIds = (result.to || []).map(t => String(t.toObjectId || t.id));
-              if (evIds.includes(String(eid))) matched.add(String(result.from?.id));
-            }
+        if (matched.length > 0) {
+          return res(200, {
+            results: matched.map(mapListContact),
+            total:   matched.length,
+            _method: 'participations_breakdown'
+          });
+        }
 
-            const filtered = listContacts.filter(c => matched.has(String(c.vid))).map(mapListContact);
-            if (filtered.length > 0)
-              return res(200, { results: filtered, total: filtered.length, _method: 'list_filtered' });
-
-            // Kein Event-Filter möglich → alle Listenkontakte
-            const all = listContacts.map(mapListContact);
-            if (all.length > 0)
-              return res(200, { results: all, total: all.length, _method: 'list_all_unfiltered' });
-          }
+        // Letzter Fallback: alle Listenkontakte ohne Event-Filter
+        if (allContacts.length > 0) {
+          return res(200, {
+            results: allContacts.map(mapListContact),
+            total:   allContacts.length,
+            _method: 'list_all_no_filter'
+          });
         }
       }
 
@@ -152,16 +136,16 @@ exports.handler = async function(event) {
     return res(400, { error: `Unbekannte action: "${p.action}"` });
 
   } catch (e) {
-    return res(502, { error: e.message, stack: e.stack?.split('\n')[0] });
+    return res(502, { error: e.message });
   }
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function mapListContact(c) {
-  const v    = key => c.properties?.[key]?.value || '';
-  const raw  = v('createdate');
-  const date = raw ? (isNaN(raw) ? raw : new Date(parseInt(raw)).toISOString()) : '';
+  const v   = key => c.properties?.[key]?.value || '';
+  const raw = v('createdate');
+  const dt  = raw ? (isNaN(raw) ? raw : new Date(parseInt(raw)).toISOString()) : '';
   return {
     id: String(c.vid),
     properties: {
@@ -169,22 +153,13 @@ function mapListContact(c) {
       lastname:   v('lastname'),
       email:      v('email'),
       company:    v('company'),
-      createdate: date
+      createdate: dt
     }
   };
 }
 
-async function batchContacts(ids, props, h) {
-  const r = await fetch(`${BASE}/crm/v3/objects/contacts/batch/read`, {
-    method: 'POST', headers: h,
-    body:   JSON.stringify({ inputs: ids.map(id => ({ id })), properties: props })
-  });
-  if (!r.ok) return [];
-  return (await r.json()).results || [];
-}
-
-function tryParse(str) {
-  try { return JSON.parse(str); } catch { return { raw: str }; }
+function tryParse(s) {
+  try { return JSON.parse(s); } catch { return { raw: s }; }
 }
 
 function res(status, body) {
@@ -196,6 +171,6 @@ function res(status, body) {
       'Access-Control-Allow-Headers': 'Content-Type',
       'Cache-Control':                'no-cache'
     },
-    body: JSON.stringify(body)
+    body: typeof body === 'string' ? body : JSON.stringify(body)
   };
 }

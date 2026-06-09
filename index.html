@@ -1120,17 +1120,17 @@ async function hsLoadEvents(){
     if(!r.ok) return;
     var d = await r.json();
     if(!d.results||!d.results.length) return;
+    // Function gibt bereits normalisiertes Format zurück (kein properties-Wrapper)
     EVS = d.results.map(function(e){
-      var p = e.properties||{};
       return{
-        id:       e.id,
-        name:     p.hs_event_name||'',
-        type:     p.hs_event_type||'',
-        desc:     p.hs_event_description||'',
-        date:     (p.hs_start_datetime||'').split('T')[0],
-        status:   _hsMapStatus(p.hs_event_status_v2),
-        regs:     parseInt(p.hs_registrations||0),
-        org:      p.hs_event_organizer||''
+        id:     e.id     || '',
+        name:   e.name   || '',
+        type:   e.type   || '',
+        desc:   e.desc   || '',
+        date:   e.date   || '',
+        status: e.status || 'upcoming',
+        regs:   parseInt(e.regs || 0),
+        org:    e.org    || ''
       };
     });
     _PA_CACHE; // Reset cache
