@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FENYX Event-Dashboard 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0D1117;--lime:#BFFF00;
+  --bg:#F0F2EE;--card:#fff;--border:#E2E6E0;
+  --text:#0D1117;--mut:#56675E;--hint:#8A9E93;
+  --fh:'Barlow Condensed',sans-serif;--fb:'DM Sans',sans-serif;
+  --r:10px;
+}
+body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* ── NAV ── */
+#nav{
+  position:sticky;top:0;z-index:300;
+  background:#0D1117;
+  height:52px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+/* Logo: all white, condensed caps — matching the uploaded mark */
+.nav-logo{
+  font-family:var(--fh);font-size:22px;font-weight:800;
+  letter-spacing:.2em;color:#fff;text-transform:uppercase;
+  line-height:1;
+}
+.nav-center{font-size:11px;color:rgba(191,255,0,.4);font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+.nav-r{display:flex;gap:6px;align-items:center}
+.nbtn{
+  padding:5px 16px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;
+  border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.4);
+  transition:all .15s;font-family:var(--fb);white-space:nowrap;
+}
+.nbtn.on{background:var(--lime);color:#0D1117;border-color:var(--lime)}
+.nbtn:hover:not(.on){color:#fff;border-color:rgba(255,255,255,.3)}
+
+/* ── LAYOUT ── */
+#app{max-width:1320px;margin:0 auto;padding:24px 28px 80px}
+
+/* ── CARDS ── */
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:22px 24px}
+.card-ink{background:#0D1117;border-radius:var(--r);border:1px solid rgba(191,255,0,.12);padding:22px 28px;border-top:2px solid var(--lime)}
+
+/* ── TYPE ── */
+.pg-h{font-family:var(--fh);font-size:26px;font-weight:800;letter-spacing:.03em;color:var(--text);line-height:1}
+.pg-s{font-size:12px;color:var(--hint);margin-top:4px}
+.sec{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px}
+.ul{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--hint)}
+
+/* ── KPI STRIP (dark) ── */
+.kstrip{display:grid;grid-template-columns:repeat(5,1fr);gap:0}
+.kstrip .ki{padding:0 24px;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;justify-content:flex-start}
+.kstrip .ki:first-child{padding-left:0}
+.kstrip .ki:last-child{border-right:none;padding-right:0}
+.ki .kl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(191,255,0,.5);margin-bottom:7px;line-height:1;white-space:nowrap}
+.ki .kv{font-family:var(--logo);font-size:30px;font-weight:400;color:#fff;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.04em}
+.ki .ks{font-size:11px;color:rgba(255,255,255,.38);margin-top:5px;line-height:1;white-space:nowrap}
+
+/* ── KPI LIGHT ── */
+.kl-card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px 18px;border-left:3px solid var(--ink)}
+.kl-card .kl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);margin-bottom:6px;line-height:1}
+.kl-card .kv{font-family:var(--fh);font-size:24px;font-weight:800;color:var(--text);line-height:1;display:block}
+.kl-card .ks{font-size:11px;color:var(--hint);margin-top:4px;line-height:1}
+
+/* ── TABS ── */
+.tabs{display:flex;border-bottom:2px solid var(--ink);margin-bottom:24px;gap:0}
+.tab{padding:11px 22px;background:transparent;border:none;border-bottom:2px solid transparent;font-size:13px;font-weight:400;color:var(--mut);cursor:pointer;margin-bottom:-1px;transition:all .15s;font-family:var(--fb)}
+.tab.on{font-weight:600;color:var(--text);border-bottom-color:var(--ink)}
+.tab .tc{margin-left:5px;font-size:11px;color:var(--hint)}
+.tab.on .tc{color:#1A5C3A}
+.pane{display:none}.pane.on{display:block}
+
+/* ── SCOPE ── */
+.scope{display:inline-flex;border-radius:6px;border:1px solid var(--ink);overflow:hidden;height:32px}
+.sb{padding:0 16px;border:none;cursor:pointer;font-size:12px;font-weight:500;background:transparent;color:var(--mut);transition:all .15s;font-family:var(--fb)}
+.sb.on{background:var(--ink);color:var(--lime)}
+.sb+.sb{border-left:1px solid var(--border)}
+
+/* ── TABLE ── */
+.dt{width:100%;border-collapse:collapse}
+.dt th{text-align:left;font-size:10px;font-weight:700;color:var(--hint);letter-spacing:.08em;text-transform:uppercase;padding:0 14px 10px 0;border-bottom:1px solid var(--border)}
+.dt td{padding:11px 14px 11px 0;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.dt tbody tr{cursor:pointer;transition:background .1s}
+.dt tbody tr:hover{background:var(--bg)}
+.dt tbody tr:last-child td{border-bottom:none}
+.dt td:last-child,.dt th:last-child{padding-right:0}
+
+/* ── BADGE ── */
+.b{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.04em;border-radius:4px;padding:2px 9px;white-space:nowrap;border:1px solid transparent}
+.b-up{background:#FEF9EC;color:#78350F;border-color:#FCD34D}
+.b-ok{background:#ECFDF5;color:#065F46;border-color:#6EE7B7}
+.b-no{background:#FEF2F2;color:#991B1B;border-color:#FCA5A5}
+.b-dr{background:var(--bg);color:var(--mut);border-color:var(--border)}
+.b-ql{background:#F5F3FF;color:#5B21B6;border-color:#C4B5FD}
+.b-pr{background:#FEF9EC;color:#78350F;border-color:#FCD34D}
+.b-ng{background:#EFF6FF;color:#1E40AF;border-color:#93C5FD}
+.b-wn{background:#ECFDF5;color:#065F46;border-color:#6EE7B7}
+.b-ls{background:#FEF2F2;color:#991B1B;border-color:#FCA5A5}
+.b-bz{background:#ECFDF5;color:#065F46;border-color:#6EE7B7}
+.b-bf{background:#EFF6FF;color:#1E40AF;border-color:#93C5FD}
+.b-ab{background:#FEF9EC;color:#78350F;border-color:#FCD34D}
+
+/* ── BARS ── */
+.bt{height:4px;background:var(--bg);border-radius:2px;overflow:hidden}
+.bf{height:100%;border-radius:2px;transition:width .5s}
+.bt6{height:6px;background:#1A2620;border-radius:3px;overflow:hidden}
+.bf6{height:100%;border-radius:3px;transition:width .5s}
+
+/* ── CAT PILL ── */
+.cp{font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px}
+.cp-location{background:#2563EB18;color:#2563EB}
+.cp-catering{background:#05966918;color:#059669}
+.cp-marketing{background:#D9770618;color:#D97706}
+
+/* ── BTNS ── */
+.btn{padding:9px 20px;background:var(--ink);border:1px solid rgba(191,255,0,.2);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--lime);font-family:var(--fb);letter-spacing:.03em;transition:all .15s;white-space:nowrap}
+.btn:hover{opacity:.8}
+.btn-g{padding:9px 16px;background:var(--card);border:1px solid var(--border);border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;color:var(--mut);font-family:var(--fb)}
+.btn-hs{padding:7px 13px;background:#FF7A59;border:none;border-radius:5px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;text-decoration:none;display:inline-block;font-family:var(--fb)}
+.btn-lime{padding:9px 20px;background:var(--lime);border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;color:var(--ink);font-family:var(--fb)}
+
+/* ── CHECKBOX ── */
+.chk{width:16px;height:16px;border-radius:3px;flex-shrink:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--border);background:transparent;transition:all .15s;vertical-align:middle}
+.chk.on{background:var(--ink);border-color:var(--ink)}
+.chk svg{display:none}.chk.on svg{display:block}
+
+/* ── CALENDAR ── */
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-dh{text-align:center;font-size:10px;font-weight:700;color:var(--hint);letter-spacing:.06em;padding:3px 0}
+.cal-c{min-height:48px;border-radius:6px;padding:5px 6px;border:1px solid transparent;transition:background .1s;cursor:default}
+.cal-c.ev{background:#F0FDF4;border-color:#BBF7D0;cursor:pointer}
+.cal-c.ev:hover{background:#DCFCE7}
+.cal-c.td{background:var(--ink)!important;border-color:transparent!important}
+.cal-n{font-size:11px;color:var(--mut);line-height:1;margin-bottom:3px}
+.cal-c.td .cal-n{color:var(--lime);font-weight:700}
+.cal-chip{font-size:9px;font-weight:600;color:#065F46;background:#DCFCE7;border-radius:3px;padding:1px 5px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── POPUP ── */
+#pop{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:9px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:999;min-width:220px;padding:8px;display:none}
+.pop-h{font-size:10px;font-weight:700;color:var(--hint);padding:4px 8px 6px;letter-spacing:.08em;text-transform:uppercase}
+.pop-i{padding:9px 10px;border-radius:6px;cursor:pointer;display:flex;gap:9px;align-items:center}
+.pop-i:hover{background:var(--bg)}
+.pop-dot{width:6px;height:6px;border-radius:50%;background:#10B981;flex-shrink:0}
+
+/* ── FUNNEL ── */
+.fn-g{display:flex;gap:8px;align-items:stretch}
+.fn-c{flex:1;border-radius:8px;padding:16px 12px;text-align:center;cursor:pointer;border:1px solid var(--border);background:var(--bg);transition:all .18s}
+.fn-c:hover{border-color:var(--ink);background:var(--card)}
+.fn-v{font-family:var(--fh);font-size:24px;font-weight:800}
+.fn-l{font-size:11px;font-weight:600;margin-top:3px}
+.fn-m{font-size:11px;color:var(--hint);margin-top:3px}
+
+/* ── DONUT ── */
+.donut-wrap{display:flex;align-items:center;gap:20px}
+.donut-legend{display:flex;flex-direction:column;gap:8px;flex:1}
+.dl-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.dl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dl-val{font-weight:700;margin-left:auto;font-size:12px}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.stat-card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:18px 20px}
+.stat-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--hint);margin-bottom:8px}
+.stat-big{font-family:var(--fh);font-size:32px;font-weight:800;color:var(--text);line-height:1}
+.stat-sub{font-size:12px;color:var(--mut);margin-top:4px}
+
+/* ── MODAL ── */
+#modal{position:fixed;inset:0;background:rgba(13,17,23,.55);z-index:1000;display:none;align-items:center;justify-content:center}
+#modal.on{display:flex}
+.mbox{background:var(--card);border-radius:14px;padding:28px 30px;width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.18)}
+.mbox-title{font-family:var(--fh);font-size:21px;font-weight:800;letter-spacing:.03em;margin-bottom:4px}
+.mbox-sub{font-size:12px;color:var(--hint);margin-bottom:22px}
+
+/* ── hint color fix: readable on both light and dark ── */
+.card-ink .ki .kl,.card-ink .ki .ks{color:rgba(255,255,255,.38)}
+.card-ink .ki .kv{color:#fff}
+#lmodal{position:fixed;inset:0;background:rgba(13,17,23,.55);z-index:1000;display:none;align-items:center;justify-content:center}
+#lmodal.on{display:flex}
+
+/* ── FORM ── */
+.fi{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text);outline:none;background:var(--card);font-family:var(--fb)}
+.fi:focus{border-color:var(--ink)}
+.fl{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
+.add-form{background:var(--bg);border-radius:9px;padding:18px;margin-bottom:14px;border:1px solid var(--border);display:none}
+.add-form.on{display:block}
+.g4{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:9px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:9px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px}
+.frow{margin-bottom:12px}
+
+/* ── LAYOUT UTILS ── */
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.g4r{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.g3r{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.g2r{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.gcal{display:grid;grid-template-columns:1fr 360px;gap:16px;margin-bottom:16px}
+.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mb20{margin-bottom:20px}.mb24{margin-bottom:24px}
+.fb{display:flex;justify-content:space-between;align-items:center}
+.fg{display:flex;gap:8px;align-items:center}
+.cs2{grid-column:1/-1}
+.roi-p{color:#059669;font-weight:700}.roi-n{color:#EF4444;font-weight:700}.roi-0{color:var(--hint)}
+.ring{position:relative;width:48px;height:48px;flex-shrink:0}
+.ring svg{transform:rotate(-90deg)}
+.ring-in{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+
+/* ── LIVE / SYNC ── */
+@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#BFFF00;display:inline-block;animation:pulse-live 2s ease-in-out infinite;flex-shrink:0}
+.live-strip{display:flex;align-items:center;gap:6px;opacity:0;transition:opacity .4s}
+.live-strip.on{opacity:1}
+.live-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5)}
+.sync-time{font-size:10px;color:rgba(255,255,255,.25)}
+.spin{animation:spin .8s linear infinite;display:inline-block}
+
+/* ── SKELETON LOADER ── */
+.skel{background:linear-gradient(90deg,#E8EBE6 25%,#F4F6F2 50%,#E8EBE6 75%);background-size:400px 100%;animation:shimmer 1.4s infinite;border-radius:4px}
+.skel-line{height:13px;margin-bottom:8px;border-radius:3px}
+.skel-big{height:28px;margin-bottom:10px;border-radius:5px}
+.skel-kpi{height:60px;border-radius:8px}
+
+/* ── SOURCE TOGGLE ── */
+.src-tog{display:inline-flex;border-radius:6px;border:1px solid var(--border);overflow:hidden;height:30px}
+.stb{padding:0 13px;border:none;cursor:pointer;font-size:11px;font-weight:500;background:transparent;color:var(--mut);transition:all .15s;font-family:var(--fb)}
+.stb.on{background:var(--ink);color:var(--lime)}
+.stb+.stb{border-left:1px solid var(--border)}
+
+/* ── AVATAR ── */
+.av{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0D1117;color:#fff;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:500;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s;border:1px solid rgba(255,255,255,.1)}
+#toast.show{opacity:1}
+
+/* ── NAV IMPROVEMENTS ── */
+#nav{box-shadow:0 1px 0 rgba(255,255,255,.04)}
+.nbtn-sm{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.35);transition:all .15s;font-family:var(--fb)}
+.nbtn-sm:hover{color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.2)}
+
+/* ── CARD HOVER ── */
+.dt tbody tr{transition:background .12s}
+.fn-c{transition:all .18s}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div id="nav">
+  <div class="nav-logo">FENY<span class="lx">X</span></div>
+  <div class="nav-center">Netzwerkmarketing &middot; Event-Dashboard 2026</div>
+  <div class="nav-r" style="gap:10px">
+    <div class="live-strip" id="live-strip">
+      <div class="live-dot"></div>
+      <span class="live-lbl">LIVE</span>
+      <span class="sync-time" id="sync-time"></span>
+    </div>
+    <button class="nbtn-sm" id="btn-sync" onclick="loadLiveData()" title="HubSpot synchronisieren">↻ Sync</button>
+    <button class="nbtn on" id="nav-m" onclick="goM()">Master</button>
+    <button class="nbtn" id="nav-d" onclick="goD()">Event-Detail</button>
+  </div>
+</div>
+
+<div id="app">
+
+<!-- ═══ MASTER ═══ -->
+<div id="v-m">
+  <div style="background:var(--ink);border-radius:var(--r);padding:24px 28px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(191,255,0,.12)">
+    <div>
+      <div style="font-family:var(--logo);font-size:28px;letter-spacing:.12em;color:#fff;line-height:1;margin-bottom:4px" id="m-h">EVENT-DASHBOARD 2026</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.38);letter-spacing:.04em" id="m-s">Netzwerkmarketing &middot; Wird aus HubSpot geladen&hellip;</div>
+    </div>
+    <button class="btn" onclick="openEvModal()">+ Neues Event</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" onclick="mTab('m-ov',this)">&#220;bersicht</button>
+    <button class="tab" onclick="mTab('m-co',this)">Kosten</button>
+    <button class="tab" onclick="mTab('m-le',this)">Leads &amp; ROI</button>
+    <button class="tab" onclick="mTab('m-pl',this)">Eventplanung</button>
+    <button class="tab" onclick="mTab('m-pa',this)">Teilnehmer</button>
+  </div>
+
+  <!-- OV -->
+  <div id="m-ov" class="pane on">
+    <!-- dark KPI strip -->
+    <div class="card-ink mb20"><div class="kstrip" id="ov-kpis"></div></div>
+    <!-- stat row: 3 donuts + category bar -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px" id="ov-stat-row"></div>
+    <!-- calendar + event list -->
+    <div class="gcal">
+      <div class="card">
+        <div class="sec" style="margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--ink)">Alle Events</div>
+        <table class="dt">
+          <thead><tr><th>Datum</th><th>Format</th><th>Zielgruppe</th><th>Stadt</th><th>Status</th><th>Anmeld.</th><th>ROI</th></tr></thead>
+          <tbody id="ev-tbody"></tbody>
+        </table>
+      </div>
+      <div id="cal-wrap" class="card"></div>
+    </div>
+    <!-- portfolio row -->
+    <div class="card" id="ov-port"></div>
+  </div>
+
+  <!-- COSTS -->
+  <div id="m-co" class="pane">
+    <div class="fb mb20">
+      <div class="fg">
+        <div class="scope"><button class="sb on" id="co-a" onclick="coSc('all')">Alle Events</button><button class="sb" id="co-s" onclick="coSc('single')">&#8212;</button></div>
+        <select class="fi" id="co-ev" style="max-width:280px;display:none" onchange="rCo()"></select>
+      </div>
+      <button class="btn" onclick="togF('co-form')">+ Position hinzuf&#252;gen</button>
+    </div>
+    <div class="g4r" id="co-kpis"></div>
+    <div class="g3r" id="co-cats"></div>
+    <div id="co-form" class="add-form">
+      <div class="ul mb12">Neue Position</div>
+      <div class="g4"><input class="fi" id="cfn" placeholder="Bezeichnung"><input class="fi" id="cfa" type="number" placeholder="Betrag &#8364;"><select class="fi" id="cfc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="cfs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div>
+      <div class="g2"><select class="fi" id="cfev"><option value="">&#8212; Event &#8212;</option></select><input class="fi" id="cfd" type="date"></div>
+      <div class="fg"><button class="btn" onclick="subCo()">Hinzuf&#252;gen</button><button class="btn-g" onclick="togF('co-form')">Abbrechen</button></div>
+    </div>
+    <div class="card"><table class="dt"><thead><tr><th>Datum</th><th>Position</th><th id="co-th-ev">Event</th><th>Kategorie</th><th>Betrag</th><th>Status</th></tr></thead><tbody id="co-tbody"></tbody></table></div>
+  </div>
+
+  <!-- LEADS -->
+  <div id="m-le" class="pane">
+    <div class="fb mb20">
+      <div class="fg">
+        <div class="scope"><button class="sb on" id="le-a" onclick="leSc('all')">Alle Events</button><button class="sb" id="le-s" onclick="leSc('single')">&#8212;</button></div>
+        <select class="fi" id="le-ev" style="max-width:280px;display:none" onchange="rLe()"></select>
+      </div>
+      <div class="fg">
+        <button class="btn-lime" onclick="openLeadModal(null)">+ Lead / Kontakt hinzuf&#252;gen</button>
+        <a href="https://app-eu1.hubspot.com/contacts/143687456/deals" target="_blank" class="btn-hs">HubSpot &#8599;</a>
+      </div>
+    </div>
+    <div class="card-ink mb16" id="le-kpis"></div>
+    <div class="card mb16"><div class="sec">Funnel</div><div class="fn-g" id="fn-grid"></div><div id="fn-hint" style="font-size:11px;color:var(--hint);margin-top:10px;display:none">Filter aktiv &#183; erneut klicken zum Zur&#252;cksetzen</div></div>
+    <div class="card">
+      <div class="fb mb16"><div class="sec" style="margin-bottom:0">Leads &amp; Deals</div><button class="btn" onclick="openLeadModal(null)" style="font-size:11px;padding:6px 14px">+ Lead hinzuf&#252;gen</button></div>
+      <table class="dt"><thead><tr><th>Datum</th><th>Kontakt</th><th>Unternehmen</th><th id="le-th-ev">Event</th><th>Deal-Wert</th><th>Stage</th><th>Owner</th><th></th></tr></thead><tbody id="le-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- PLANNING -->
+  <div id="m-pl" class="pane">
+    <div class="fb mb20">
+      <div class="fg">
+        <div class="scope"><button class="sb on" id="pl-a" onclick="plSc('all')">Alle Events</button><button class="sb" id="pl-s" onclick="plSc('single')">&#8212;</button></div>
+        <select class="fi" id="pl-ev" style="max-width:280px;display:none" onchange="rPl()"></select>
+      </div>
+    </div>
+    <div id="pl-cnt"></div>
+  </div>
+
+  <!-- PARTICIPANTS -->
+  <div id="m-pa" class="pane">
+    <div class="fb mb20">
+      <div class="fg">
+        <select class="fi" id="pa-ev" style="max-width:320px" onchange="rPa()"></select>
+      </div>
+      <div class="fg">
+        <input class="fi" id="pa-q" placeholder="Suche Name / Firma&hellip;" style="width:220px" oninput="rPa()">
+        <a href="https://app-eu1.hubspot.com/contacts/143687456/contacts/list/all/all" target="_blank" class="btn-hs">HubSpot &#8599;</a>
+      </div>
+    </div>
+    <div class="g4r" id="pa-kpis"></div>
+    <div class="card" id="pa-cnt"></div>
+  </div>
+</div><!-- /master -->
+
+<!-- ═══ DETAIL ═══ -->
+<div id="v-d" style="display:none">
+  <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:22px">
+    <button onclick="goM()" style="padding:7px 14px;background:var(--card);border:1px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;color:var(--mut);font-family:var(--fb);margin-top:2px">&#8249; Master</button>
+    <div style="flex:1">
+      <div style="font-family:var(--fh);font-size:24px;font-weight:800;letter-spacing:.02em" id="d-title"></div>
+      <div style="font-size:11px;color:var(--hint);margin-top:2px" id="d-sub"></div>
+    </div>
+    <div class="fg"><span id="d-badge"></span><a id="d-hs" href="#" target="_blank" class="btn-hs">HubSpot &#8599;</a></div>
+  </div>
+  <!-- dark KPI -->
+  <div class="card-ink mb20"><div class="kstrip" id="d-kpis"></div></div>
+  <!-- tabs -->
+  <div class="tabs">
+    <button class="tab on" onclick="dTab('d-ov',this)">&#220;bersicht</button>
+    <button class="tab" onclick="dTab('d-co',this)">Kosten <span class="tc" id="d-co-c"></span></button>
+    <button class="tab" onclick="dTab('d-le',this)">Leads &amp; ROI <span class="tc" id="d-le-c"></span></button>
+    <button class="tab" onclick="dTab('d-pl',this)">Eventplanung</button>
+    <button class="tab" onclick="dTab('d-pa',this)">Teilnehmer <span class="tc" id="d-pa-c"></span></button>
+  </div>
+  <div id="d-ov" class="pane on"><div class="g2r"><div class="card" id="d-co-s"></div><div class="card" id="d-le-s"></div><div class="card cs2" id="d-desc"></div></div></div>
+  <div id="d-co" class="pane"><div id="d-co-cnt"></div></div>
+  <div id="d-le" class="pane"><div id="d-le-cnt"></div></div>
+  <div id="d-pl" class="pane"><div id="d-pl-cnt"></div></div>
+  <div id="d-pa" class="pane"><div id="d-pa-cnt"></div></div>
+</div>
+
+</div><!-- /app -->
+
+<!-- NEW EVENT MODAL -->
+<div id="modal" onclick="if(event.target===this)closeEvModal()">
+  <div class="mbox">
+    <div class="mbox-title">Neues Event</div>
+    <div class="mbox-sub">Wird in HubSpot angelegt &middot; PO wird auto-generiert</div>
+    <div class="frow"><label class="fl">Format *</label><input class="fi" id="m-n" placeholder="z.B. Architekten-Schulung"></div>
+    <div class="frow"><label class="fl">Stadt *</label><input class="fi" id="m-c" placeholder="z.B. Hamburg"></div>
+    <div class="frow"><label class="fl">Datum *</label><input class="fi" id="m-d" type="date"></div>
+    <div class="frow"><label class="fl">Zielgruppe</label><input class="fi" id="m-t" placeholder="z.B. Architekten, HR, FM&hellip;"></div>
+    <div class="frow"><label class="fl">Beschreibung</label><input class="fi" id="m-ds" placeholder="Kurzbeschreibung"></div>
+    <div style="display:flex;gap:10px;margin-top:18px"><button class="btn-g" onclick="closeEvModal()">Abbrechen</button><button class="btn" style="flex:2" onclick="subEv()">In HubSpot erstellen</button></div>
+  </div>
+</div>
+
+<!-- LEAD MODAL -->
+<div id="lmodal" onclick="if(event.target===this)closeLModal()">
+  <div class="mbox">
+    <div class="mbox-title">Lead / Kontakt hinzuf&#252;gen</div>
+    <div class="mbox-sub">Manuell erfassen &middot; Wird mit HubSpot Deal verkn&#252;pft</div>
+    <div class="g2"><div class="frow"><label class="fl">Name *</label><input class="fi" id="lm-ct" placeholder="Vor- und Nachname"></div><div class="frow"><label class="fl">Unternehmen *</label><input class="fi" id="lm-co" placeholder="Firma"></div></div>
+    <div class="g2"><div class="frow"><label class="fl">E-Mail</label><input class="fi" id="lm-em" type="email" placeholder="name@firma.de"></div><div class="frow"><label class="fl">Telefon</label><input class="fi" id="lm-ph" placeholder="+49 &hellip;"></div></div>
+    <div class="g2"><div class="frow"><label class="fl">Event *</label><select class="fi" id="lm-ev"><option value="">&#8212; Event ausw&#228;hlen &#8212;</option></select></div><div class="frow"><label class="fl">Deal-Wert &#8364;</label><input class="fi" id="lm-v" type="number" placeholder="0"></div></div>
+    <div class="g2"><div class="frow"><label class="fl">Stage</label><select class="fi" id="lm-st"><option value="qualified">Qualifiziert</option><option value="proposal">Angebot</option><option value="negotiation">Verhandlung</option><option value="won">Gewonnen</option><option value="lost">Verloren</option></select></div><div class="frow"><label class="fl">Owner</label><input class="fi" id="lm-ow" placeholder="z.B. Frank Rempel"></div></div>
+    <div class="frow"><label class="fl">Notiz</label><input class="fi" id="lm-no" placeholder="Freitext&hellip;"></div>
+    <div style="display:flex;gap:10px;margin-top:18px"><button class="btn-g" onclick="closeLModal()">Abbrechen</button><button class="btn-lime" style="flex:2" onclick="subLead()">Lead speichern</button></div>
+  </div>
+</div>
+
+<!-- CAL POPUP -->
+<div id="pop"><div class="pop-h" id="pop-h"></div><div id="pop-b"></div></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════════
+const MON=['Januar','Februar','M\u00e4rz','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const DAY=['Mo','Di','Mi','Do','Fr','Sa','So'];
+const CAT={
+  location:{l:'Location & Technik',c:'#2563EB'},
+  catering:{l:'Catering & Bewirtung',c:'#059669'},
+  marketing:{l:'Marketing & Speaker',c:'#D97706'}
+};
+const SGM={
+  qualified:{l:'Qualifiziert',bg:'#F5F3FF',c:'#5B21B6',bc:'#C4B5FD'},
+  proposal:{l:'Angebot',bg:'#FEF9EC',c:'#78350F',bc:'#FCD34D'},
+  negotiation:{l:'Verhandlung',bg:'#EFF6FF',c:'#1E40AF',bc:'#93C5FD'},
+  won:{l:'Gewonnen',bg:'#ECFDF5',c:'#065F46',bc:'#6EE7B7'},
+  lost:{l:'Verloren',bg:'#FEF2F2',c:'#991B1B',bc:'#FCA5A5'}
+};
+const STMAP={upcoming:{l:'Geplant',cl:'b-up'},completed:{l:'Abgeschlossen',cl:'b-ok'},cancelled:{l:'Abgesagt',cl:'b-no'},draft:{l:'Entwurf',cl:'b-dr'}};
+const REQ=[
+  {id:'loc',l:'Location gebucht'},{id:'cat',l:'Catering beauftragt'},
+  {id:'spk',l:'Speaker best\u00e4tigt'},{id:'inv',l:'Einladungen versandt'},
+  {id:'cmp',l:'Kampagne aktiv'},{id:'frm',l:'Anmeldeformular live'},
+  {id:'eml',l:'E-Mail-Sequenz aktiv'},{id:'rem',l:'Reminder-Mail geplant'}
+];
+
+// ════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════
+let EVS=[];// Loaded live from HubSpot
+let _C={};// Kosten — manuell erfassen
+let _L={};// Leads — manuell erfassen
+let _T={};// Aufgaben
+let _P={};// Teilnehmer (lokal, Fallback)
+let _RQ={};
+
+// State
+let _SEL=null,_coSc='all',_leSc='all',_plSc='all',_paSc='all',_stF='all';
+let _calY,_calM,_lmTarget=null;
+
+// ════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════
+const cit=n=>(n||'').split('|')[0].trim();
+const fmt=n=>(n||'').split('|')[1]?.trim()||'\u2014';
+const po=n=>{const m=(n||'').match(/#([\w-]+)/);return m?m[1]:'\u2014';};
+const fd=iso=>iso?new Date(iso).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'}):'—';
+const fds=iso=>iso?new Date(iso).toLocaleDateString('de-DE',{day:'2-digit',month:'short'}):'—';
+const num=n=>(n||0).toLocaleString('de-DE');
+const gid=()=>'x'+Date.now()+Math.random().toString(36).slice(2,5);
+const gpo=()=>new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900)+100).padStart(3,'0');
+const eC=id=>_C[id]||[];
+const eL=id=>_L[id]||[];
+const eT=id=>_T[id]||[];
+const eP=id=>_P[id]||[];
+const eR=id=>{if(!_RQ[id])_RQ[id]={};return _RQ[id];};
+const sumC=cs=>(cs||[]).reduce((s,c)=>s+c.a,0);
+const eVal=id=>eL(id).filter(l=>l.st==='won').reduce((s,l)=>s+l.v,0);
+const eROI=id=>{const c=sumC(eC(id)),v=eVal(id);if(!c||!v)return null;return Math.round(((v-c)/c)*100);};
+
+function badgeSt(s){const m=STMAP[s]||STMAP.draft;return '<span class="b '+m.cl+'">'+m.l+'</span>';}
+function badgeSg(s){const m=SGM[s];if(!m)return '<span class="b b-dr">'+s+'</span>';return '<span class="b" style="background:'+m.bg+';color:'+m.c+';border-color:'+m.bc+'">'+m.l+'</span>';}
+function bar(v,mx,col,h){h=h||4;const p=mx?Math.min(100,Math.round(v/mx*100)):0;return '<div class="bt" style="height:'+h+'px"><div class="bf" style="width:'+p+'%;background:'+col+'"></div></div>';}
+function barD(v,mx,col){const p=mx?Math.min(100,Math.round(v/mx*100)):0;return '<div class="bt6"><div class="bf6" style="width:'+p+'%;background:'+col+'"></div></div>';}
+function roi(id){const r=eROI(id);if(r===null)return '<span class="roi-0">\u2014</span>';return '<span class="'+(r>=0?'roi-p':'roi-n')+'">'+(r>=0?'+':'')+r+' %</span>';}
+
+function kDark(items){
+  return '<div class="kstrip">'+items.map(function(x){
+    var val = String(x.v);
+    var valHtml = val.endsWith(' \u20ac')
+      ? val.slice(0,-2)+'<span style="font-size:16px;font-weight:700;margin-left:2px"> \u20ac</span>'
+      : val;
+    return '<div class="ki">'+
+      '<div class="kl">'+x.l+'</div>'+
+      '<div class="kv">'+valHtml+'</div>'+
+      (x.s?'<div class="ks">'+x.s+'</div>':'')+
+    '</div>';
+  }).join('')+'</div>';
+}
+function kLight4(items){
+  return items.map(x=>
+    '<div class="kl-card">'+
+      '<div class="kl">'+x.l+'</div>'+
+      '<div class="kv" style="color:'+x.c+'">'+x.v+'</div>'+
+      (x.s?'<div class="ks">'+x.s+'</div>':'')+
+    '</div>'
+  ).join('');
+}
+
+// SVG donut
+function donut(pct,color,size){
+  size=size||72;
+  const r=size/2-6,cx=size/2,cy=size/2;
+  const circ=2*Math.PI*r;
+  const dash=Math.round(pct/100*circ);
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="transform:rotate(-90deg)">'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#F0F2EE" stroke-width="6"/>'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="6" stroke-dasharray="'+dash+' '+circ+'" stroke-linecap="round"/>'+
+    '</svg>';
+}
+function donutDark(pct,color,size){
+  size=size||72;
+  const r=size/2-6,cx=size/2,cy=size/2;
+  const circ=2*Math.PI*r;
+  const dash=Math.round(pct/100*circ);
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="transform:rotate(-90deg)">'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#1A2620" stroke-width="6"/>'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="6" stroke-dasharray="'+dash+' '+circ+'" stroke-linecap="round"/>'+
+    '</svg>';
+}
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',function(){
+  const n=new Date();
+  _calY=n.getFullYear();_calM=n.getMonth();
+  popSels();
+  rAll();
+  _updNav();
+  document.addEventListener('click',function(e){if(!e.target.closest('#pop')&&!e.target.closest('.cal-c'))closePop();});
+  loadLiveData();
+});
+
+function rAll(){
+  const sub=document.getElementById('m-s');
+  if(EVS.length===0){
+    if(sub)sub.textContent='Netzwerkmarketing · Verbinde mit HubSpot…';
+    document.getElementById('ov-kpis').innerHTML=kDark([
+      {l:'Events',v:'—'},{l:'Anmeldungen',v:'—'},{l:'Kosten',v:'—'},{l:'Deals',v:'—'},{l:'Konversion',v:'—'}
+    ]);
+    document.getElementById('ov-stat-row').innerHTML='<div class="card cs2" style="grid-column:1/-1;padding:60px;text-align:center"><div style="font-size:22px;margin-bottom:10px"><span class="spin" style="display:inline-block">↻</span></div><div style="font-size:14px;color:var(--hint)">Lade Events aus HubSpot…</div><div style="font-size:12px;color:var(--hint);margin-top:6px">Bitte sicherstellen, dass das Dashboard auf Netlify deployed ist</div></div>';
+    document.getElementById('ev-tbody').innerHTML='<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--hint)">Keine Events geladen</td></tr>';
+    document.getElementById('cal-wrap').innerHTML='';
+    document.getElementById('ov-port').innerHTML='';
+    return;
+  }
+  if(sub)sub.textContent='Netzwerkmarketing · '+EVS.length+' Events in HubSpot';
+  rOv();rCo();rLe();rPl();rPa();updSc();
+}
+
+// ════════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════════
+function _updNav(){
+  var hasSel=!!_SEL;
+  var inDetail=document.getElementById('v-d').style.display!=='none';
+  document.getElementById('nav-m').classList.toggle('on',!inDetail);
+  document.getElementById('nav-d').classList.toggle('on',inDetail);
+  document.getElementById('nav-d').style.opacity=hasSel?'1':'0.35';
+  document.getElementById('nav-d').style.pointerEvents=hasSel?'auto':'none';
+}
+function goM(){
+  document.getElementById('v-m').style.display='';
+  document.getElementById('v-d').style.display='none';
+  _updNav();
+}
+function goD(){
+  if(!_SEL)return;
+  document.getElementById('v-m').style.display='none';
+  document.getElementById('v-d').style.display='';
+  _updNav();
+  rDetail();
+}
+function openEv(id){
+  _SEL=id;
+  document.getElementById('v-m').style.display='none';
+  document.getElementById('v-d').style.display='';
+  _updNav();
+  rDetail();
+}
+
+// ════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════
+function mTab(pid,btn){['m-ov','m-co','m-le','m-pl','m-pa'].forEach(id=>document.getElementById(id).classList.toggle('on',id===pid));btn.closest('.tabs').querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+function dTab(pid,btn){['d-ov','d-co','d-le','d-pl','d-pa'].forEach(id=>document.getElementById(id).classList.toggle('on',id===pid));btn.closest('.tabs').querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+// ════════════════════════════════════════════════
+// SCOPE
+// ════════════════════════════════════════════════
+function updSc(){
+  function lbl(id){const ev=EVS.find(e=>e.id===id);return ev?cit(ev.name)+' \u00b7 '+fmt(ev.name):'Event';}
+  document.getElementById('co-s').textContent=lbl(document.getElementById('co-ev').value||EVS[0]?.id);
+  document.getElementById('le-s').textContent=lbl(document.getElementById('le-ev').value||EVS[0]?.id);
+  document.getElementById('pl-s').textContent=lbl(document.getElementById('pl-ev').value||EVS[0]?.id);
+  const _pas=document.getElementById('pa-s');if(_pas)_pas.textContent=lbl(document.getElementById('pa-ev').value||EVS[0]?.id);
+}
+function coSc(s){_coSc=s;document.getElementById('co-a').classList.toggle('on',s==='all');document.getElementById('co-s').classList.toggle('on',s==='single');document.getElementById('co-ev').style.display=s==='single'?'':'none';document.getElementById('co-th-ev').style.display=s==='all'?'':'none';rCo();}
+function leSc(s){_leSc=s;document.getElementById('le-a').classList.toggle('on',s==='all');document.getElementById('le-s').classList.toggle('on',s==='single');document.getElementById('le-ev').style.display=s==='single'?'':'none';document.getElementById('le-th-ev').style.display=s==='all'?'':'none';rLe();}
+function plSc(s){_plSc=s;document.getElementById('pl-a').classList.toggle('on',s==='all');document.getElementById('pl-s').classList.toggle('on',s==='single');document.getElementById('pl-ev').style.display=s==='single'?'':'none';rPl();}
+function paSc(s){_paSc=s;rPa();}
+function popSels(){
+  ['co-ev','le-ev','pl-ev','pa-ev','cfev','lm-ev'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    const isMain=!['cfev','lm-ev'].includes(id);
+    if(isMain)sel.innerHTML='';
+    EVS.forEach(ev=>{const o=document.createElement('option');o.value=ev.id;o.textContent=cit(ev.name)+' \u00b7 '+fmt(ev.name)+' \u00b7 '+fds(ev.date);sel.appendChild(o);});
+    if(isMain&&!sel.onchange)sel.onchange=()=>updSc();
+  });
+  const cfev=document.getElementById('cfev');
+  if(!cfev.querySelector('option[value=""]')){const bl=document.createElement('option');bl.value='';bl.textContent='\u2014 Event \u2014';cfev.insertBefore(bl,cfev.firstChild);}
+  const lmev=document.getElementById('lm-ev');
+  if(!lmev.querySelector('option[value=""]')){const bl=document.createElement('option');bl.value='';bl.textContent='\u2014 Event ausw\u00e4hlen \u2014';lmev.insertBefore(bl,lmev.firstChild);}
+}
+
+// ════════════════════════════════════════════════
+// OVERVIEW
+// ════════════════════════════════════════════════
+function rOv(){
+  const allL=EVS.flatMap(e=>eL(e.id));
+  const won=allL.filter(l=>l.st==='won');
+  const wonV=won.reduce((s,l)=>s+l.v,0);
+  const totC=EVS.reduce((s,e)=>s+sumC(eC(e.id)),0);
+  const totR=EVS.reduce((s,e)=>s+e.regs,0);
+  const conv=allL.length?Math.round(won.length/allL.length*100):0;
+
+  document.getElementById('ov-kpis').innerHTML=kDark([
+    {l:'Events gesamt',v:EVS.length,s:EVS.filter(e=>e.status==='upcoming').length+' bevorstehend'},
+    {l:'Anmeldungen',v:totR,s:'gesamt'},
+    {l:'Kosten erfasst',v:num(totC)+' \u20ac'},
+    {l:'Deals gewonnen',v:won.length,s:num(wonV)+' \u20ac'},
+    {l:'Konversion',v:conv+' %',s:allL.length+' Leads total'}
+  ]);
+
+  // ── STAT ROW: 4 donut/stat cards ──
+  // 1) Events: geplant vs. abgeschlossen
+  const evUp=EVS.filter(e=>e.status==='upcoming').length;
+  const evDone=EVS.filter(e=>e.status==='completed').length;
+  const evDraft=EVS.filter(e=>e.status==='draft').length;
+  const pctDone=EVS.length?Math.round(evDone/EVS.length*100):0;
+
+  // 2) Teilnehmer pro Zielgruppe
+  const byType={};
+  EVS.forEach(e=>{const t=e.type||'Sonstige';byType[t]=(byType[t]||0)+e.regs;});
+  const typeSorted=Object.entries(byType).sort((a,b)=>b[1]-a[1]);
+  const typeColors=['#BFFF00','#10B981','#2563EB','#D97706','#8B5CF6'];
+
+  // 3) Kosten-Status
+  const allCosts=EVS.flatMap(e=>eC(e.id));
+  const cPaid=allCosts.filter(c=>c.s==='bezahlt').reduce((s,c)=>s+c.a,0);
+  const cComm=allCosts.filter(c=>c.s==='beauftragt').reduce((s,c)=>s+c.a,0);
+  const cOff=allCosts.filter(c=>c.s==='Angebot').reduce((s,c)=>s+c.a,0);
+  const cTot=cPaid+cComm+cOff||1;
+  const cPaidPct=Math.round(cPaid/cTot*100);
+
+  // 4) Lead pipeline
+  const stages=['qualified','proposal','negotiation','won','lost'];
+  const sCols={qualified:'#8B5CF6',proposal:'#D97706',negotiation:'#2563EB',won:'#10B981',lost:'#EF4444'};
+  const sByStage={};
+  stages.forEach(s=>sByStage[s]=allL.filter(l=>l.st===s).length);
+  const lTotal=allL.length||1;
+
+  document.getElementById('ov-stat-row').innerHTML=
+    // Card 1 – Events Status
+    '<div class="card" style="display:flex;flex-direction:column;gap:0;border-top:3px solid var(--ink)">'+
+      '<div class="sec">Event-Status</div>'+
+      '<div style="display:flex;align-items:center;gap:16px;flex:1">'+
+        '<div style="position:relative;flex-shrink:0">'+donut(pctDone,'#BFFF00',80)+
+          '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:18px;font-weight:800">'+pctDone+'%</div>'+
+        '</div>'+
+        '<div style="flex:1">'+
+          ['upcoming','completed','draft'].map((s,i)=>{
+            const cnt=EVS.filter(e=>e.status===s).length;
+            const cols=['#BFFF00','#10B981','#8FA399'];
+            const labels=['Geplant','Abgeschlossen','Entwurf'];
+            return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'+
+              '<div style="width:8px;height:8px;border-radius:50%;background:'+cols[i]+';flex-shrink:0"></div>'+
+              '<span style="font-size:12px;color:var(--mut);flex:1">'+labels[i]+'</span>'+
+              '<span style="font-size:13px;font-weight:700">'+cnt+'</span>'+
+              '</div>';
+          }).join('')+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    // Card 2 – Teilnehmer nach Zielgruppe
+    '<div class="card">'+
+      '<div class="sec">Teilnehmer nach Typ</div>'+
+      '<div>'+typeSorted.slice(0,4).map((e,i)=>{
+        const pct=totR?Math.round(e[1]/totR*100):0;
+        return '<div style="margin-bottom:10px">'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">'+
+            '<span style="color:var(--mut)">'+e[0]+'</span>'+
+            '<span style="font-weight:700">'+e[1]+' <span style="font-weight:400;color:var(--hint)">('+pct+'%)</span></span>'+
+          '</div>'+
+          bar(e[1],totR||1,typeColors[i]||'#8FA399',5)+
+        '</div>';
+      }).join('')+
+      '</div>'+
+    '</div>'+
+    // Card 3 – Kosten-Status
+    '<div class="card" style="display:flex;flex-direction:column;gap:0;border-top:3px solid var(--lime)">'+
+      '<div class="sec">Kosten-Status</div>'+
+      '<div style="display:flex;align-items:center;gap:16px;flex:1">'+
+        '<div style="position:relative;flex-shrink:0">'+donut(cPaidPct,'#059669',80)+
+          '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:18px;font-weight:800">'+cPaidPct+'%</div>'+
+        '</div>'+
+        '<div style="flex:1">'+
+          [['bezahlt',cPaid,'#059669'],['beauftragt',cComm,'#2563EB'],['Angebot',cOff,'#D97706']].map(row=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="width:8px;height:8px;border-radius:50%;background:'+row[2]+';flex-shrink:0"></div><span style="font-size:12px;color:var(--mut);flex:1">'+row[0]+'</span><span style="font-size:13px;font-weight:700">'+num(row[1])+' \u20ac</span></div>').join('')+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    // Card 4 – Lead Pipeline
+    '<div class="card">'+
+      '<div class="sec">Lead-Pipeline</div>'+
+      '<div>'+stages.map(s=>{
+        const cnt=sByStage[s];
+        const pct=Math.round(cnt/lTotal*100);
+        return '<div style="margin-bottom:10px">'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">'+
+            '<span style="color:var(--mut)">'+SGM[s].l+'</span>'+
+            '<span style="font-weight:700">'+cnt+' <span style="font-weight:400;color:var(--hint)">('+pct+'%)</span></span>'+
+          '</div>'+
+          bar(cnt,lTotal,sCols[s],5)+
+        '</div>';
+      }).join('')+
+      '</div>'+
+    '</div>';
+
+  // calendar
+  rCal();
+
+  // event table
+  const sorted=[...EVS].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  document.getElementById('ev-tbody').innerHTML=sorted.map(ev=>{
+    const r=eROI(ev.id);
+    return '<tr onclick="openEv(\''+ev.id+'\')">'+
+      '<td style="color:var(--mut);font-size:12px">'+fds(ev.date)+'</td>'+
+      '<td style="font-weight:600">'+fmt(ev.name)+'</td>'+
+      '<td style="color:var(--mut);font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ev.type+'</td>'+
+      '<td style="color:var(--mut);font-size:12px">'+cit(ev.name)+'</td>'+
+      '<td>'+badgeSt(ev.status)+'</td>'+
+      '<td>'+ev.regs+'</td>'+
+      '<td>'+roi(ev.id)+'</td>'+
+      '</tr>';
+  }).join('');
+
+  // portfolio
+  const formats=[...new Set(EVS.map(e=>fmt(e.name)))];
+  document.getElementById('ov-port').innerHTML=
+    '<div class="sec">Portfolio nach Format</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">'+
+    formats.map(f=>{
+      const fEvs=EVS.filter(e=>fmt(e.name)===f);
+      const fR=fEvs.reduce((s,e)=>s+e.regs,0);
+      const fL=fEvs.flatMap(e=>eL(e.id)).length;
+      return '<div style="background:var(--bg);border-radius:8px;padding:14px 16px;border-top:3px solid var(--lime)">'+
+        '<div style="font-size:13px;font-weight:600;margin-bottom:5px">'+f+'</div>'+
+        '<div style="font-size:11px;color:var(--mut)">'+fEvs.length+' Events \u00b7 '+fR+' Anmeld. \u00b7 '+fL+' Leads</div>'+
+        '</div>';
+    }).join('')+
+    '</div>';
+}
+
+// ════════════════════════════════════════════════
+// CALENDAR
+// ════════════════════════════════════════════════
+function rCal(){
+  const today=new Date();
+  const first=new Date(_calY,_calM,1),last=new Date(_calY,_calM+1,0);
+  const start=(first.getDay()+6)%7;
+  const cells=[];for(let i=0;i<start;i++)cells.push(null);for(let d=1;d<=last.getDate();d++)cells.push(d);
+  while(cells.length%7!==0)cells.push(null);
+  const byDay={};
+  EVS.forEach(ev=>{const dt=new Date(ev.date);if(dt.getFullYear()===_calY&&dt.getMonth()===_calM){const k=dt.getDate();if(!byDay[k])byDay[k]=[];byDay[k].push(ev);}});
+  const isTod=d=>d&&_calY===today.getFullYear()&&_calM===today.getMonth()&&d===today.getDate();
+  const cellsH=cells.map(d=>{
+    if(!d)return '<div class="cal-c"></div>';
+    const evs=byDay[d]||[],has=evs.length>0,tod=isTod(d);
+    const chips=evs.slice(0,2).map(e=>'<div class="cal-chip">'+fmt(e.name)+'</div>').join('');
+    const more=evs.length>2?'<div style="font-size:9px;color:var(--hint)">+'+(evs.length-2)+'</div>':'';
+    const cls='cal-c'+(has?' ev':'')+(tod?' td':'');
+    const ids=encodeURIComponent(JSON.stringify(evs.map(e=>e.id)));
+    return '<div class="'+cls+'" onclick="calClick('+d+',\''+ids+'\',event)"><div class="cal-n">'+d+'</div>'+chips+more+'</div>';
+  }).join('');
+  const monthEvs=EVS.filter(ev=>{const d=new Date(ev.date);return d.getFullYear()===_calY&&d.getMonth()===_calM;}).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const leg=monthEvs.map(ev=>'<div onclick="openEv(\''+ev.id+'\')" style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-right:14px;margin-bottom:4px"><div style="width:5px;height:5px;border-radius:50%;background:#10B981;flex-shrink:0"></div><span style="font-size:11px;color:var(--mut)">'+fds(ev.date)+' \u00b7 '+fmt(ev.name)+'</span></div>').join('');
+  document.getElementById('cal-wrap').innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;background:var(--ink);border-radius:6px;padding:10px 12px">'+
+      '<span style="font-family:var(--logo);font-size:16px;letter-spacing:.08em;color:#fff">'+MON[_calM].toUpperCase()+' '+_calY+'</span>'+
+      '<div style="display:flex;gap:4px"><button onclick="calNav(-1)" style="width:28px;height:28px;border:1px solid rgba(255,255,255,.15);border-radius:5px;background:transparent;cursor:pointer;font-size:15px;color:rgba(255,255,255,.6)">\u2039</button><button onclick="calNav(1)" style="width:28px;height:28px;border:1px solid rgba(255,255,255,.15);border-radius:5px;background:transparent;cursor:pointer;font-size:15px;color:rgba(255,255,255,.6)">\u203a</button></div>'+
+    '</div>'+
+    '<div class="cal-g" style="margin-bottom:4px">'+DAY.map(d=>'<div class="cal-dh">'+d+'</div>').join('')+'</div>'+
+    '<div class="cal-g">'+cellsH+'</div>'+
+    (monthEvs.length?'<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap">'+leg+'</div>':'');
+}
+function calNav(d){_calM+=d;if(_calM<0){_calM=11;_calY--;}if(_calM>11){_calM=0;_calY++;}closePop();rCal();}
+function calClick(day,enc,e){
+  const ids=JSON.parse(decodeURIComponent(enc));
+  if(ids.length===1){openEv(ids[0]);return;}
+  const evs=ids.map(id=>EVS.find(ev=>ev.id===id)).filter(Boolean);
+  const pop=document.getElementById('pop');pop.style.display='block';
+  const r=e.currentTarget.getBoundingClientRect();
+  pop.style.top=(r.bottom+window.scrollY+4)+'px';pop.style.left=(r.left+window.scrollX)+'px';
+  document.getElementById('pop-h').textContent=day+'. '+MON[_calM];
+  document.getElementById('pop-b').innerHTML=evs.map(ev=>'<div class="pop-i" onclick="openEv(\''+ev.id+'\');closePop()"><div class="pop-dot"></div><div><div style="font-size:13px;font-weight:500">'+fmt(ev.name)+'</div><div style="font-size:11px;color:var(--mut)">'+cit(ev.name)+' \u00b7 '+ev.type+'</div></div></div>').join('');
+}
+function closePop(){document.getElementById('pop').style.display='none';}
+
+// ════════════════════════════════════════════════
+// COSTS
+// ════════════════════════════════════════════════
+function rCo(){
+  const eid=document.getElementById('co-ev').value||(EVS[0]?.id);
+  const devs=_coSc==='all'?EVS:EVS.filter(e=>e.id===eid);
+  const all=devs.flatMap(e=>eC(e.id).map(c=>({...c,_eid:e.id,_en:e.name})));
+  const paid=all.filter(c=>c.s==='bezahlt').reduce((s,c)=>s+c.a,0);
+  const comm=all.filter(c=>c.s==='beauftragt').reduce((s,c)=>s+c.a,0);
+  const offr=all.filter(c=>c.s==='Angebot').reduce((s,c)=>s+c.a,0);
+  const tot=paid+comm+offr;
+  document.getElementById('co-kpis').innerHTML=kLight4([
+    {l:'Bezahlt',v:num(paid)+' \u20ac',c:'#059669',s:''},
+    {l:'Beauftragt',v:num(comm)+' \u20ac',c:'#2563EB',s:''},
+    {l:'Angebote',v:num(offr)+' \u20ac',c:'#D97706',s:''},
+    {l:'Gesamt',v:num(tot)+' \u20ac',c:'var(--text)',s:''}
+  ]);
+  document.getElementById('co-cats').innerHTML=Object.entries(CAT).map(([k,m])=>{
+    const cs=all.filter(c=>c.cat===k);
+    const ct=cs.reduce((s,c)=>s+c.a,0);
+    const cp=cs.filter(c=>c.s==='bezahlt').reduce((s,c)=>s+c.a,0);
+    return '<div class="card" style="border-top:3px solid '+m.c+'"><div style="font-size:12px;font-weight:600;color:'+m.c+';margin-bottom:8px">'+m.l+'</div><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+num(ct)+' \u20ac</div>'+bar(cp,ct||1,m.c)+'<div style="font-size:11px;color:var(--hint);margin-top:5px">'+num(cp)+' \u20ac bezahlt \u00b7 '+cs.length+' Pos.</div></div>';
+  }).join('');
+  const srt=[...all].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0));
+  document.getElementById('co-tbody').innerHTML=srt.length?srt.map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td>'+(_coSc==='all'?'<td style="font-size:12px;color:var(--hint)">'+cit(c._en)+' \u00b7 '+fmt(c._en)+'</td>':'')+'<td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td></tr>').join(''):'<tr><td colspan="6" style="padding:24px 0;text-align:center;color:var(--hint)">Keine Positionen</td></tr>';
+  updSc();
+}
+function togF(id){document.getElementById(id).classList.toggle('on');}
+function subCo(){
+  const n=document.getElementById('cfn').value.trim(),a=parseFloat(document.getElementById('cfa').value),cat=document.getElementById('cfc').value,s=document.getElementById('cfs').value,eid=document.getElementById('cfev').value,d=document.getElementById('cfd').value;
+  if(!n||!a||!eid)return;
+  if(!_C[eid])_C[eid]=[];_C[eid].push({id:gid(),n:n,a:a,cat:cat,s:s,d:d});
+  document.getElementById('cfn').value='';document.getElementById('cfa').value='';
+  rCo();rOv();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
+}
+
+// ════════════════════════════════════════════════
+// LEADS
+// ════════════════════════════════════════════════
+function rLe(){
+  const eid=document.getElementById('le-ev').value||(EVS[0]?.id);
+  const devs=_leSc==='all'?EVS:EVS.filter(e=>e.id===eid);
+  const all=devs.flatMap(e=>eL(e.id).map(l=>({...l,_en:e.name,_ed:e.date})));
+  const won=all.filter(l=>l.st==='won');
+  const wonV=won.reduce((s,l)=>s+l.v,0);
+  const conv=all.length?Math.round(won.length/all.length*100):0;
+  document.getElementById('le-kpis').innerHTML=kDark([
+    {l:'Leads',v:all.length},{l:'Gewonnen',v:won.length,s:num(wonV)+' €'},
+    {l:'Konversion',v:conv+' %'},{l:'Pipeline',v:num(all.reduce((s,l)=>s+l.v,0))+' €'},
+    {l:'Ø Deal',v:won.length?num(Math.round(wonV/won.length))+' €':'—'}
+  ]);
+  document.getElementById('fn-grid').innerHTML=Object.entries(SGM).map(([k,s])=>{
+    const cnt=all.filter(l=>l.st===k).length;
+    const val=all.filter(l=>l.st===k).reduce((a,l)=>a+l.v,0);
+    const on=_stF===k;
+    return '<div class="fn-c" style="'+(on?'background:'+s.bg+';border-color:'+s.bc+';':'')+'" onclick="stFil(\''+k+'\')">'+
+      '<div class="fn-v" style="color:'+(on?s.c:'var(--text)')+'">'+cnt+'</div>'+
+      '<div class="fn-l" style="color:'+(on?s.c:'var(--mut)')+'">'+s.l+'</div>'+
+      (val>0?'<div class="fn-m">'+num(val)+' €</div>':'')+
+      '</div>';
+  }).join('');
+  document.getElementById('fn-hint').style.display=_stF!=='all'?'':'none';
+  const fil=_stF==='all'?all:all.filter(l=>l.st===_stF);
+  document.getElementById('le-tbody').innerHTML=fil.length?fil.map(l=>'<tr>'+
+    '<td style="color:var(--mut);font-size:12px">'+fds(l._ed)+'</td>'+
+    '<td style="font-weight:600">'+l.ct+'</td>'+
+    '<td style="color:var(--mut)">'+l.co+'</td>'+
+    (_leSc==='all'?'<td style="font-size:11px;color:var(--hint)">'+cit(l._en)+' · '+fmt(l._en)+'</td>':'')+
+    '<td style="font-weight:700">'+(l.v>0?num(l.v)+' €':'—')+'</td>'+
+    '<td>'+badgeSg(l.st)+'</td>'+
+    '<td style="color:var(--mut);font-size:12px">'+l.ow+'</td>'+
+    '<td><button onclick="openLeadModal(\''+l.id+'\',\''+l._eid+'\')" style="padding:3px 10px;font-size:11px;background:transparent;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--mut);font-family:var(--fb)">⋯</button></td>'+
+    '</tr>').join(''):'<tr><td colspan="8" style="padding:24px 0;text-align:center;color:var(--hint)">Keine Leads · Werden aus HubSpot Deals synchronisiert</td></tr>';
+  updSc();
+}
+
+function stFil(k){_stF=_stF===k?'all':k;rLe();}
+
+// ════════════════════════════════════════════════
+// LEAD MODAL
+// ════════════════════════════════════════════════
+function openLeadModal(leadId,evId){
+  _lmTarget={leadId,evId};
+  const modal=document.getElementById('lmodal');
+  modal.classList.add('on');
+  // prefill event if known
+  if(evId){const sel=document.getElementById('lm-ev');if(sel)sel.value=evId;}
+  // if editing existing lead
+  if(leadId&&evId){
+    const l=(eL(evId)||[]).find(x=>x.id===leadId);
+    if(l){
+      document.getElementById('lm-ct').value=l.ct||'';
+      document.getElementById('lm-co').value=l.co||'';
+      document.getElementById('lm-em').value=l.em||'';
+      document.getElementById('lm-ph').value=l.ph||'';
+      document.getElementById('lm-v').value=l.v||'';
+      document.getElementById('lm-st').value=l.st||'qualified';
+      document.getElementById('lm-ow').value=l.ow||'';
+      document.getElementById('lm-no').value=l.note||'';
+    }
+  } else {
+    ['lm-ct','lm-co','lm-em','lm-ph','lm-v','lm-ow','lm-no'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('lm-st').value='qualified';
+  }
+}
+function closeLModal(){
+  document.getElementById('lmodal').classList.remove('on');
+  _lmTarget=null;
+}
+function subLead(){
+  const ct=document.getElementById('lm-ct').value.trim();
+  const co=document.getElementById('lm-co').value.trim();
+  const em=document.getElementById('lm-em').value.trim();
+  const ph=document.getElementById('lm-ph').value.trim();
+  const eid=document.getElementById('lm-ev').value;
+  const v=parseFloat(document.getElementById('lm-v').value)||0;
+  const st=document.getElementById('lm-st').value;
+  const ow=document.getElementById('lm-ow').value.trim();
+  const note=document.getElementById('lm-no').value.trim();
+  if(!ct||!co||!eid)return;
+  if(!_L[eid])_L[eid]=[];
+  if(_lmTarget?.leadId){
+    _L[eid]=_L[eid].map(l=>l.id===_lmTarget.leadId?{...l,ct,co,em,ph,v,st,ow,note}:l);
+  } else {
+    _L[eid].push({id:gid(),ct,co,em,ph,date:new Date().toISOString().slice(0,10),v,st,ow,note});
+  }
+  closeLModal();rLe();rOv();
+  if(_SEL&&document.getElementById('v-d').style.display!=='none')rDLe();
+}
+
+// ════════════════════════════════════════════════
+// PLANNING
+// ════════════════════════════════════════════════
+function rPl(){
+  const eid=document.getElementById('pl-ev').value||(EVS[0]?.id);
+  const devs=_plSc==='all'?EVS:EVS.filter(e=>e.id===eid);
+  if(_plSc==='all'){
+    const aT=devs.flatMap(e=>eT(e.id).map(t=>({...t,_ev:e})));
+    const open=aT.filter(t=>!t.done);
+    const aR=devs.reduce((s,e)=>s+Object.values(eR(e.id)).filter(Boolean).length,0);
+    document.getElementById('pl-cnt').innerHTML=
+      '<div class="g3r mb16">'+kLight4([
+        {l:'Pflichtpunkte erledigt',v:aR+'/'+(devs.length*REQ.length),c:'#2563EB',s:''},
+        {l:'Offene Aufgaben',v:open.length,c:'#D97706',s:''},
+        {l:'Erledigt',v:aT.length-open.length,c:'#059669',s:''}
+      ])+'</div>'+
+      '<div class="card"><div class="sec">Offene Aufgaben</div>'+
+      (open.length?open.map(t=>'<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><div class="chk'+(t.done?' on':'')+'" onclick="togTask(\''+t._ev.id+'\',\''+t.id+'\')"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.2 6L8 1" stroke="#BFFF00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span style="flex:1;font-size:13px">'+t.l+'</span><span style="font-size:12px;color:var(--hint)">'+cit(t._ev.name)+' \u00b7 '+fmt(t._ev.name)+'</span>'+(t.due?'<span style="font-size:11px;color:var(--hint)">'+t.due+'</span>':'')+'</div>').join(''):'<div style="font-size:13px;color:var(--hint)">Keine offenen Aufgaben</div>')+
+      '</div>';
+    return;
+  }
+  document.getElementById('pl-cnt').innerHTML=devs.map(ev=>planCard(ev)).join('');
+  updSc();
+}
+
+function planCard(ev){
+  const rqs=eR(ev.id),tasks=eT(ev.id);
+  const rd=Object.values(rqs).filter(Boolean).length,td=tasks.filter(t=>t.done).length;
+  const tot=REQ.length+tasks.length,done=rd+td,pct=tot?Math.round(done/tot*100):0;
+  const rc=pct===100?'#10B981':'#0D1117';
+  const ci=2*Math.PI*14,dash=Math.round(pct/100*ci);
+  const reqItems=REQ.map(item=>'<label style="display:flex;align-items:center;gap:9px;margin-bottom:8px;cursor:pointer" onclick="togReq(\''+ev.id+'\',\''+item.id+'\')"><div class="chk'+(rqs[item.id]?' on':'')+'"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.2 6L8 1" stroke="#BFFF00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span style="font-size:13px;color:'+(rqs[item.id]?'var(--hint)':'var(--text)')+';text-decoration:'+(rqs[item.id]?'line-through':'none')+'">'+item.l+'</span></label>').join('');
+  const taskItems=tasks.map(t=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="chk'+(t.done?' on':'')+'" onclick="togTask(\''+ev.id+'\',\''+t.id+'\')"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.2 6L8 1" stroke="#BFFF00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span style="flex:1;font-size:13px;color:'+(t.done?'var(--hint)':'var(--text)')+';text-decoration:'+(t.done?'line-through':'none')+'">'+t.l+'</span>'+(t.due?'<span style="font-size:11px;color:var(--hint)">'+t.due+'</span>':'')+'<button onclick="delTask(\''+ev.id+'\',\''+t.id+'\')" style="background:none;border:none;color:var(--border);cursor:pointer;font-size:14px;padding:0 2px">\u00d7</button></div>').join('');
+  return '<div class="card mb16">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">'+
+      '<div><div style="font-size:14px;font-weight:600">'+cit(ev.name)+' \u00b7 '+fmt(ev.name)+'</div><div style="font-size:11px;color:var(--hint);margin-top:2px">'+fd(ev.date)+' \u00b7 '+po(ev.name)+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:12px"><div style="text-align:right"><div style="font-size:18px;font-weight:700;color:'+(pct===100?'#059669':'var(--text)')+'">'+pct+'%</div><div style="font-size:10px;color:var(--hint)">erledigt</div></div>'+
+        '<div class="ring"><svg width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18" fill="none" stroke="var(--bg)" stroke-width="4" transform="rotate(-90,24,24)"/><circle cx="24" cy="24" r="18" fill="none" stroke="'+rc+'" stroke-width="4" stroke-dasharray="'+dash+' '+ci+'" stroke-linecap="round" transform="rotate(-90,24,24)"/></svg><div class="ring-in">'+pct+'%</div></div>'+
+      '</div></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">'+
+      '<div><div style="font-size:11px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;justify-content:space-between"><span>Pflicht-Checkliste</span><span style="font-weight:400;color:var(--hint)">'+rd+'/'+REQ.length+'</span></div>'+bar(rd,REQ.length,'#2563EB')+'<div style="margin-top:12px">'+reqItems+'</div></div>'+
+      '<div><div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;justify-content:space-between"><span>Aufgaben</span><span style="font-weight:400;color:var(--hint)">'+td+'/'+tasks.length+'</span></div>'+(tasks.length?bar(td,tasks.length,'#059669'):'')+'<div style="margin-top:12px">'+taskItems+'</div>'+(tasks.length?'':'<div style="font-size:13px;color:var(--hint);margin-bottom:12px">Noch keine Aufgaben</div>')+
+        '<div style="display:flex;gap:6px;margin-top:8px"><input id="ti-'+ev.id+'" placeholder="Aufgabe\u2026" onkeydown="if(event.key===\'Enter\')addTask(\''+ev.id+'\')" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;font-family:var(--fb)"><input id="td-'+ev.id+'" type="date" style="padding:7px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;width:118px;font-family:var(--fb)"><button onclick="addTask(\''+ev.id+'\')" class="btn" style="padding:7px 14px">+</button></div>'+
+      '</div>'+
+    '</div></div>';
+}
+function togReq(eid,iid){const r=eR(eid);r[iid]=!r[iid];rPl();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();}
+function togTask(eid,tid){if(!_T[eid])return;_T[eid]=_T[eid].map(t=>t.id===tid?{...t,done:!t.done}:t);rPl();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();}
+function delTask(eid,tid){if(!_T[eid])return;_T[eid]=_T[eid].filter(t=>t.id!==tid);rPl();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();}
+function addTask(eid){const inp=document.getElementById('ti-'+eid),due=document.getElementById('td-'+eid);if(!inp?.value.trim())return;if(!_T[eid])_T[eid]=[];_T[eid].push({id:gid(),l:inp.value.trim(),done:false,due:due?.value||''});inp.value='';if(due)due.value='';rPl();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();}
+
+// ════════════════════════════════════════════════
+// PARTICIPANTS
+// ════════════════════════════════════════════════
+function rPa(){
+  const q=(document.getElementById('pa-q')?.value||'').toLowerCase().trim();
+  const eid=document.getElementById('pa-ev').value||(EVS[0]?.id);
+  if(!eid)return;
+
+  if(_pa_cache[eid]!==undefined){
+    // data already loaded — just render
+    _renderPa(_pa_cache[eid],q);
+    return;
+  }
+
+  // Not yet loaded → show spinner and fetch
+  document.getElementById('pa-kpis').innerHTML=
+    ['','','',''].map(()=>'<div class="kl-card"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-big"></div></div>').join('');
+  document.getElementById('pa-cnt').innerHTML=
+    '<div style="padding:40px;text-align:center;color:var(--hint)"><div style="font-size:22px;margin-bottom:8px"><span class="spin" style="display:inline-block">↻</span></div>Lade Kontakte aus HubSpot…</div>';
+
+  fetch(API+'?action=event_contacts&eventId='+encodeURIComponent(eid))
+    .then(r=>r.json())
+    .then(data=>{
+      _pa_cache[eid]=(data.results||[]).map(c=>{
+        const p=c.properties||{};
+        const name=[p.firstname||'',p.lastname||''].join(' ').trim()||p.email||'';
+        return{id:String(c.id),name,co:p.company||'',email:p.email||'',reg:(p.createdate||'').split('T')[0],status:'registered',note:''};
+      });
+      _renderPa(_pa_cache[eid],q);
+    })
+    .catch(()=>{
+      _pa_cache[eid]=[];
+      _renderPa([],q);
+      showToast('⚠ Kontakte konnten nicht geladen werden');
+    });
+}
+
+function _renderPa(contacts,q){
+  const filt=q?contacts.filter(p=>p.name.toLowerCase().includes(q)||p.co.toLowerCase().includes(q)||p.email.toLowerCase().includes(q)):contacts;
+  document.getElementById('pa-kpis').innerHTML=kLight4([
+    {l:'Registriert',v:contacts.length,c:'#059669',s:'in HubSpot'},
+    {l:'Angezeigt',v:filt.length,c:'var(--text)',s:q?'gefiltert':'alle'},
+    {l:'Sync',v:_lastSync?_lastSync.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'—',c:'var(--hint)',s:''},
+    {l:'',v:'',c:'var(--hint)',s:''}
+  ]);
+  document.getElementById('pa-cnt').innerHTML=
+    '<table class="dt"><thead><tr><th></th><th>Name</th><th>Unternehmen</th><th>E-Mail</th><th>Erstellt</th><th>Status</th></tr></thead><tbody>'+
+    (filt.length?filt.map(p=>{
+      const col=avColor(p.name);
+      const av='<div class="av" style="background:'+col+'">'+initials(p.name)+'</div>';
+      return '<tr>'+
+        '<td style="width:36px">'+av+'</td>'+
+        '<td style="font-weight:600">'+p.name+'</td>'+
+        '<td style="color:var(--mut)">'+p.co+'</td>'+
+        '<td style="color:var(--hint);font-size:12px">'+p.email+'</td>'+
+        '<td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td>'+
+        '<td><span class="b b-ok">Registriert</span></td>'+
+        '</tr>';
+    }).join(''):'<tr><td colspan="6" style="padding:32px 0;text-align:center;color:var(--hint)">'+(contacts.length===0?'Keine Registrierungen in HubSpot vorhanden':'Keine Treffer für die Suche')+'</td></tr>')+
+    '</tbody></table>';
+}
+
+
+// ════════════════════════════════════════════════
+// DETAIL
+// ════════════════════════════════════════════════
+function rDetail(){
+  const ev=EVS.find(e=>e.id===_SEL);if(!ev)return;
+  const sm=STMAP[ev.status]||STMAP.draft;
+  document.getElementById('d-title').textContent=fmt(ev.name)+' \u00b7 '+cit(ev.name);
+  document.getElementById('d-sub').textContent=fd(ev.date)+' \u00b7 PO: '+po(ev.name)+(ev.org?' \u00b7 '+ev.org:'');
+  document.getElementById('d-badge').innerHTML='<span class="b '+sm.cl+'">'+sm.l+'</span>';
+  document.getElementById('d-hs').href='https://app-eu1.hubspot.com/contacts/143687456/record/0-54/'+ev.id;
+  document.getElementById('d-co-c').textContent='('+eC(ev.id).length+')';
+  document.getElementById('d-le-c').textContent='('+eL(ev.id).length+')';
+  document.getElementById('d-pa-c').textContent='('+eP(ev.id).length+')';
+  const leads=eL(ev.id),won=leads.filter(l=>l.st==='won'),wonV=won.reduce((s,l)=>s+l.v,0);
+  document.getElementById('d-kpis').innerHTML=kDark([
+    {l:'Anmeldungen',v:ev.regs},{l:'Kosten',v:num(sumC(eC(ev.id)))+' \u20ac'},
+    {l:'Leads',v:leads.length,s:won.length+' gewonnen'},
+    {l:'Deal-Wert',v:num(leads.reduce((s,l)=>s+l.v,0))+' \u20ac'},
+    {l:'ROI',v:(()=>{const r=eROI(ev.id);return r===null?'—':(r>=0?'+':'')+r+' %';})()}
+  ]);
+  // overview tabs
+  const cr=Object.entries(CAT).map(([k,m])=>{const v=eC(ev.id).filter(c=>c.cat===k).reduce((s,c)=>s+c.a,0);return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:'+m.c+';font-weight:500">'+m.l+'</span><span style="font-weight:600">'+num(v)+' \u20ac</span></div>';}).join('')+'<div style="display:flex;justify-content:space-between;padding:10px 0 0;font-size:13px;font-weight:700"><span style="color:var(--mut)">Gesamt</span><span>'+num(sumC(eC(ev.id)))+' \u20ac</span></div>';
+  document.getElementById('d-co-s').innerHTML='<div class="sec">Kosten-\u00dcbersicht</div>'+cr;
+  const lr=Object.entries(SGM).map(([k,s])=>{const cnt=leads.filter(l=>l.st===k).length;const val=leads.filter(l=>l.st===k).reduce((a,l)=>a+l.v,0);if(!cnt)return '';return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">'+badgeSg(k)+'<span style="font-size:13px;color:var(--mut)">'+cnt+' Lead'+(cnt>1?'s':'')+'</span><span style="font-size:13px;font-weight:600">'+(val>0?num(val)+' \u20ac':'—')+'</span></div>';}).join('');
+  document.getElementById('d-le-s').innerHTML='<div class="sec">Lead-Funnel</div>'+(lr||'<div style="font-size:13px;color:var(--hint)">Keine Leads</div>');
+  document.getElementById('d-desc').innerHTML='<div class="sec">Beschreibung</div><div style="font-size:13px;color:var(--mut)">'+(ev.desc||'—')+'</div><div style="display:flex;gap:20px;margin-top:10px;font-size:11px;color:var(--hint)"><span>Zielgruppe: <b style="color:var(--mut);font-weight:500">'+(ev.type||'—')+'</b></span><span>HubSpot-ID: <b style="color:var(--mut);font-weight:500">'+ev.id+'</b></span></div>';
+  rDCo();rDLe();rDPl();rDPa();
+}
+
+function rDCo(){
+  const ev=EVS.find(e=>e.id===_SEL);if(!ev)return;
+  const cs=eC(ev.id),paid=cs.filter(c=>c.s==='bezahlt').reduce((s,c)=>s+c.a,0),comm=cs.filter(c=>c.s==='beauftragt').reduce((s,c)=>s+c.a,0),offr=cs.filter(c=>c.s==='Angebot').reduce((s,c)=>s+c.a,0),tot=paid+comm+offr;
+  document.getElementById('d-co-cnt').innerHTML=
+    '<div class="g4r">'+kLight4([{l:'Bezahlt',v:num(paid)+' \u20ac',c:'#059669'},{l:'Beauftragt',v:num(comm)+' \u20ac',c:'#2563EB'},{l:'Angebote',v:num(offr)+' \u20ac',c:'#D97706'},{l:'Gesamt',v:num(tot)+' \u20ac',c:'var(--text)'}])+'</div>'+
+    '<div class="g3r mb16">'+Object.entries(CAT).map(([k,m])=>{const cvs=cs.filter(c=>c.cat===k);const ct=cvs.reduce((s,c)=>s+c.a,0);const cp=cvs.filter(c=>c.s==='bezahlt').reduce((s,c)=>s+c.a,0);return '<div class="card" style="border-top:3px solid '+m.c+'"><div style="font-size:12px;font-weight:600;color:'+m.c+';margin-bottom:8px">'+m.l+'</div><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+num(ct)+' \u20ac</div>'+bar(cp,ct||1,m.c)+'<div style="font-size:11px;color:var(--hint);margin-top:5px">'+num(cp)+' \u20ac bezahlt \u00b7 '+cvs.length+' Pos.</div></div>';}).join('')+'</div>'+
+    '<div class="card"><div id="d-addF" class="add-form"><div class="ul mb12">Neue Position</div><div class="g4"><input class="fi" id="dcn" placeholder="Bezeichnung"><input class="fi" id="dca" type="number" placeholder="Betrag \u20ac"><select class="fi" id="dcc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="dcs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div><div style="margin-bottom:12px"><input class="fi" id="dcd" type="date" style="max-width:160px"></div><div class="fg"><button class="btn" onclick="subDCo()">Hinzuf\u00fcgen</button><button class="btn-g" onclick="togF(\'d-addF\')">Abbrechen</button></div></div>'+
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn" onclick="togF(\'d-addF\')">+ Position hinzuf\u00fcgen</button></div>'+
+    '<table class="dt"><thead><tr><th>Datum</th><th>Position</th><th>Kategorie</th><th>Betrag</th><th>Status</th></tr></thead><tbody>'+
+    (cs.length?[...cs].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0)).map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td><td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td></tr>').join(''):'<tr><td colspan="5" style="padding:24px 0;text-align:center;color:var(--hint)">Keine Positionen</td></tr>')+
+    '</tbody></table></div>';
+}
+function subDCo(){
+  const n=document.getElementById('dcn').value.trim(),a=parseFloat(document.getElementById('dca').value),cat=document.getElementById('dcc').value,s=document.getElementById('dcs').value,d=document.getElementById('dcd').value;
+  if(!n||!a)return;
+  if(!_C[_SEL])_C[_SEL]=[];_C[_SEL].push({id:gid(),n:n,a:a,cat:cat,s:s,d:d});
+  rDCo();rCo();rOv();
+}
+
+function rDLe(){
+  const ev=EVS.find(e=>e.id===_SEL);if(!ev)return;
+  const leads=eL(ev.id),won=leads.filter(l=>l.st==='won'),wonV=won.reduce((s,l)=>s+l.v,0),conv=leads.length?Math.round(won.length/leads.length*100):0;
+  document.getElementById('d-le-cnt').innerHTML=
+    '<div class="card-ink mb16">'+kDark([{l:'Leads',v:leads.length},{l:'Gewonnen',v:won.length,s:num(wonV)+' \u20ac'},{l:'Konversion',v:conv+' %'},{l:'Pipeline',v:num(leads.reduce((s,l)=>s+l.v,0))+' \u20ac'},{l:'\u00d8 Deal',v:won.length?num(Math.round(wonV/won.length))+' \u20ac':'—'}])+'</div>'+
+    '<div class="card mb16"><div class="sec">Funnel</div><div style="display:flex;gap:8px">'+
+    Object.entries(SGM).map(([k,s])=>{const cnt=leads.filter(l=>l.st===k).length;const val=leads.filter(l=>l.st===k).reduce((a,l)=>a+l.v,0);return '<div style="flex:1;background:'+(cnt?s.bg:'var(--bg)')+';border:1px solid '+(cnt?s.bc:'var(--border)')+';border-radius:8px;padding:14px 12px;text-align:center"><div style="font-family:var(--fh);font-size:22px;font-weight:800;color:'+(cnt?s.c:'var(--text)')+'">'+cnt+'</div><div style="font-size:11px;font-weight:600;color:'+(cnt?s.c:'var(--mut)');+';margin-top:3px">'+s.l+'</div>'+(val>0?'<div style="font-size:11px;color:var(--hint);margin-top:3px">'+num(val)+' \u20ac</div>':'')+'</div>';}).join('')+
+    '</div></div>'+
+    '<div class="card"><div class="fb mb16"><div class="sec" style="margin-bottom:0">Leads &amp; Deals</div><button class="btn" onclick="openLeadModal(null,\''+ev.id+'\')" style="font-size:11px;padding:6px 14px">+ Lead hinzuf\u00fcgen</button></div>'+
+    '<table class="dt"><thead><tr><th>Kontakt</th><th>Unternehmen</th><th>E-Mail</th><th>Deal-Wert</th><th>Stage</th><th>Owner</th><th>Notiz</th></tr></thead><tbody>'+
+    (leads.length?leads.map(l=>'<tr><td style="font-weight:600">'+l.ct+'</td><td style="color:var(--mut)">'+l.co+'</td><td style="color:var(--hint);font-size:12px">'+(l.em||'—')+'</td><td style="font-weight:700">'+(l.v>0?num(l.v)+' \u20ac':'—')+'</td><td>'+badgeSg(l.st)+'</td><td style="color:var(--mut);font-size:12px">'+l.ow+'</td><td style="color:var(--hint);font-size:12px">'+(l.note||'—')+'</td></tr>').join(''):'<tr><td colspan="7" style="padding:24px 0;text-align:center;color:var(--hint)">Keine Leads</td></tr>')+
+    '</tbody></table></div>';
+}
+
+function rDPl(){
+  const ev=EVS.find(e=>e.id===_SEL);if(!ev)return;
+  document.getElementById('d-pl-cnt').innerHTML=planCard(ev);
+}
+
+function rDPa(){
+  const ev=EVS.find(e=>e.id===_SEL);if(!ev)return;
+  const ps=eP(ev.id),reg=ps.filter(p=>p.status==='registered').length,wait=ps.filter(p=>p.status==='waitlist').length,can=ps.filter(p=>p.status==='cancelled').length;
+  document.getElementById('d-pa-cnt').innerHTML=
+    '<div class="g4r mb16">'+kLight4([{l:'Angemeldet',v:reg,c:'#059669'},{l:'Warteliste',v:wait,c:'#D97706'},{l:'Abgesagt',v:can,c:'#991B1B'},{l:'Gesamt',v:ps.length,c:'var(--text)'}])+'</div>'+
+    '<div class="card"><table class="dt"><thead><tr><th>Name</th><th>Unternehmen</th><th>E-Mail</th><th>Anmeldedatum</th><th>Status</th><th>Notiz</th></tr></thead><tbody>'+
+    (ps.length?ps.map(p=>{const sc=p.status==='registered'?'b-ok':p.status==='waitlist'?'b-up':'b-no';const sl=p.status==='registered'?'Angemeldet':p.status==='waitlist'?'Warteliste':'Abgesagt';return '<tr><td style="font-weight:600">'+p.name+'</td><td style="color:var(--mut)">'+p.co+'</td><td style="color:var(--hint);font-size:12px">'+p.email+'</td><td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td><td><span class="b '+sc+'">'+sl+'</span></td><td style="color:var(--hint);font-size:12px">'+(p.note||'—')+'</td></tr>';}).join(''):'<tr><td colspan="6" style="padding:24px 0;text-align:center;color:var(--hint)">Keine Teilnehmer</td></tr>')+
+    '</tbody></table></div>';
+}
+
+// ════════════════════════════════════════════════
+// EVENT MODAL
+// ════════════════════════════════════════════════
+function openEvModal(){document.getElementById('modal').classList.add('on');}
+function closeEvModal(){document.getElementById('modal').classList.remove('on');}
+function subEv(){
+  const n=document.getElementById('m-n').value.trim(),c=document.getElementById('m-c').value.trim(),d=document.getElementById('m-d').value;
+  if(!n||!c||!d)return;
+  const p=gpo();
+  EVS.push({id:gid(),name:c+' | '+n+' | #'+p,type:document.getElementById('m-t').value,desc:document.getElementById('m-ds').value,date:d,status:'draft',regs:0,org:''});
+  popSels();rAll();closeEvModal();
+  ['m-n','m-c','m-d','m-t','m-ds'].forEach(id=>document.getElementById(id).value='');
+}
+
+// ════════════════════════════════════════════════
+// HUBSPOT LIVE DATA
+// ════════════════════════════════════════════════
+const API='/.netlify/functions/hubspot';
+let _lastSync=null,_syncing=false;
+let _pa_cache={};// contact cache per event ID
+
+function mapHsStatus(s){
+  return{SCHEDULED:'upcoming',COMPLETED:'completed',CANCELLED:'cancelled',DRAFT:'draft'}[(s||'').toUpperCase()]||'draft';
+}
+
+function avColor(name){
+  const cols=['#059669','#2563EB','#D97706','#8B5CF6','#0891B2','#DB2777'];
+  let h=0;for(let i=0;i<(name||'').length;i++)h=(h+name.charCodeAt(i))%cols.length;
+  return cols[h];
+}
+function initials(name){return(name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?';}
+
+async function loadLiveData(){
+  if(_syncing)return;
+  _syncing=true;
+  const btn=document.getElementById('btn-sync');
+  if(btn){btn.innerHTML='<span class="spin">↻</span> Sync';btn.disabled=true;}
+  showToast('Events werden aus HubSpot geladen…');
+
+  try{
+    const evRes=await fetch(API+'?action=events');
+    if(evRes.ok){
+      const evData=await evRes.json();
+      if(evData.results&&evData.results.length>0){
+        EVS=evData.results.map(e=>{
+          const p=e.properties||{};
+          const date=(p.hs_start_datetime||'').split('T')[0];
+          return{
+            id:e.id,
+            name:p.hs_event_name||'(kein Name)',
+            type:p.hs_event_type||'',
+            desc:p.hs_event_description||'',
+            date,
+            status:mapHsStatus(p.hs_event_status_v2),
+            regs:parseInt(p.hs_registrations||0),
+            org:p.hs_event_organizer||''
+          };
+        });
+        _pa_cache={};// reset contact cache on event refresh
+      }
+    }
+    _lastSync=new Date();
+    updSyncUI(true);
+    popSels();rAll();
+    showToast('✓ '+EVS.length+' Events aus HubSpot geladen');
+  }catch(e){
+    updSyncUI(false);
+    showToast('⚠ Sync fehlgeschlagen — lokale Daten werden verwendet');
+    console.error('HubSpot sync error:',e);
+    rAll();
+  }finally{
+    _syncing=false;
+    if(btn){btn.innerHTML='↻ Sync';btn.disabled=false;}
+  }
+}
+
+function updSyncUI(ok){
+  const strip=document.getElementById('live-strip');
+  const st=document.getElementById('sync-time');
+  if(strip)strip.classList.toggle('on',ok);
+  if(st&&_lastSync)st.textContent=_lastSync.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+}
+
+// Source toggles removed — using event-specific loading
+
+// ── Toast ──
+let _toastT;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  if(!t)return;
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT=setTimeout(()=>t.classList.remove('show'),3000);
+}
+</script>
+</body>
+</html>
