@@ -1,32 +1,30 @@
 // FENYX Event-Dashboard — HubSpot API Proxy
 // Netlify Function: /.netlify/functions/hubspot
-//
-// Query params:
-//   action=events                    → alle Marketing Events
-//   action=event_contacts&eventId=X  → Kontakte die mit Event X verknüpft sind
-//                                      (über CRM Associations + Batch-Read)
-//
-// Env var required: HUBSPOT_TOKEN (Private App Token)
 
 const BASE = 'https://api.hubapi.com';
 
 exports.handler = async function (event) {
   const token = process.env.HUBSPOT_TOKEN;
+  const p = event.queryStringParameters || {};
 
-  if (!token) {
-    return err(500, 'HUBSPOT_TOKEN not configured in Netlify environment variables.');
+  // CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers: cors(), body: '' };
   }
 
-  const p = event.queryStringParameters || {};
+  // ── ping: tests that the function runs at all ──────────────────────────────
+  if (p.action === 'ping') {
+    return json({ ok: true, hasToken: !!token, ts: new Date().toISOString() });
+  }
+
+  if (!token) {
+    return err(500, 'HUBSPOT_TOKEN is not set. Add it in Netlify → Site settings → Environment variables.');
+  }
+
   const hdrs = {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json'
   };
-
-  // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: corsHeaders(), body: '' };
-  }
 
   try {
     switch (p.action) {
@@ -38,75 +36,68 @@ exports.handler = async function (event) {
           'hs_start_datetime', 'hs_end_datetime', 'hs_event_status_v2',
           'hs_registrations', 'hs_noshows', 'hs_event_organizer', 'hubspot_owner_id'
         ].join(',');
-        const url = `${BASE}/crm/v3/objects/marketing_events?properties=${props}&limit=100`;
-        const res = await fetch(url, { headers: hdrs });
+        const res = await fetch(
+          `${BASE}/crm/v3/objects/marketing_events?properties=${props}&limit=100`,
+          { headers: hdrs }
+        );
+        if (!res.ok) {
+          const body = await res.text();
+          return err(res.status, `HubSpot error ${res.status}: ${body.slice(0, 300)}`);
+        }
         return proxy(res);
       }
 
-      // ── Contacts associated with a specific Marketing Event ───────────────
-      // Step 1: CRM Associations → get contact IDs linked to this event
-      // Step 2: Batch read → get contact details for those IDs
+      // ── Contacts associated with a Marketing Event ────────────────────────
       case 'event_contacts': {
         if (!p.eventId) return err(400, 'Missing parameter: eventId');
 
-        // Step 1 — associations
-        const assocUrl = `${BASE}/crm/v3/objects/marketing_events/${encodeURIComponent(p.eventId)}/associations/contacts`;
-        const assocRes = await fetch(assocUrl, { headers: hdrs });
-
+        // Step 1: get contact IDs from CRM associations
+        const assocRes = await fetch(
+          `${BASE}/crm/v3/objects/marketing_events/${encodeURIComponent(p.eventId)}/associations/contacts`,
+          { headers: hdrs }
+        );
         if (!assocRes.ok) {
-          // Return empty if no association exists rather than crashing
-          return json({ results: [], total: 0, _note: `Associations API: ${assocRes.status}` });
+          return json({ results: [], total: 0, _note: `Assoc API ${assocRes.status}` });
         }
-
         const assocData = await assocRes.json();
-        const contactIds = (assocData.results || []).map(a => a.id || a.toObjectId).filter(Boolean);
+        const ids = (assocData.results || []).map(a => a.id).filter(Boolean);
+        if (ids.length === 0) return json({ results: [], total: 0 });
 
-        if (contactIds.length === 0) {
-          return json({ results: [], total: 0 });
-        }
-
-        // Step 2 — batch read contact details
-        const batchUrl = `${BASE}/crm/v3/objects/contacts/batch/read`;
-        const batchRes = await fetch(batchUrl, {
+        // Step 2: batch read contact details
+        const batchRes = await fetch(`${BASE}/crm/v3/objects/contacts/batch/read`, {
           method: 'POST',
           headers: hdrs,
           body: JSON.stringify({
-            inputs: contactIds.map(id => ({ id: String(id) })),
-            properties: ['firstname', 'lastname', 'email', 'company', 'phone', 'createdate', 'hs_lead_status']
+            inputs: ids.map(id => ({ id: String(id) })),
+            properties: ['firstname', 'lastname', 'email', 'company', 'phone', 'createdate']
           })
         });
-
         return proxy(batchRes);
       }
 
       default:
-        return err(400, `Unknown action: "${p.action}". Valid: events, event_contacts`);
+        return err(400, `Unknown action: "${p.action}". Valid: ping, events, event_contacts`);
     }
   } catch (e) {
-    return err(502, `HubSpot request failed: ${e.message}`);
+    return err(502, `Function error: ${e.message}`);
   }
 };
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
 async function proxy(res) {
   const body = await res.text();
-  return { statusCode: res.status, headers: corsHeaders(), body };
+  return { statusCode: res.status, headers: cors(), body };
 }
-
 function json(data) {
-  return { statusCode: 200, headers: corsHeaders(), body: JSON.stringify(data) };
+  return { statusCode: 200, headers: cors(), body: JSON.stringify(data) };
 }
-
-function corsHeaders() {
+function cors() {
   return {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Cache-Control': 'no-cache, no-store'
+    'Cache-Control': 'no-cache'
   };
 }
-
 function err(status, message) {
-  return { statusCode: status, headers: corsHeaders(), body: JSON.stringify({ error: message }) };
+  return { statusCode: status, headers: cors(), body: JSON.stringify({ error: message }) };
 }
