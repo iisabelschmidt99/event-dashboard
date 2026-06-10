@@ -1145,29 +1145,25 @@ async function hsLoadEvents(){
   }catch(e){ console.warn('hsLoadEvents:', e.message); }
 }
 
-// Kontakte für ein Event laden
+// Kontakte für ein Event laden (mit maxResults = ev.regs für Early Termination)
 async function hsLoadContacts(eid, cb){
   if(_PA_CACHE[eid] !== undefined){ cb(_PA_CACHE[eid]); return; }
+  var ev = EVS.find(function(e){return e.id===eid;});
+  var maxR = ev && ev.regs > 0 ? ev.regs : 20;
   try{
-    // Versuche zuerst CRM Associations v4, dann v3, dann Attendees
-    var tried = [
-      _HS+'?action=event_contacts&eventId='+encodeURIComponent(eid)
-    ];
-    var contacts = [];
-    for(var i=0;i<tried.length;i++){
-      var r = await fetch(tried[i]);
-      if(!r.ok) continue;
-      var d = await r.json();
-      var raw = d.results||[];
-      if(raw.length > 0){
-        contacts = raw.map(function(c){
-          var p = c.properties||{};
-          var n = ((p.firstname||'')+' '+(p.lastname||'')).trim()||p.email||c.id||'';
-          return{id:String(c.id),name:n,co:p.company||'',email:p.email||'',reg:(p.createdate||'').split('T')[0]};
-        });
-        break;
-      }
-    }
+    // Timeout nach 9s damit Netlify nicht hängt
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var tid  = ctrl ? setTimeout(function(){ctrl.abort();}, 9000) : null;
+    var url  = _HS+'?action=event_contacts&eventId='+encodeURIComponent(eid)+'&maxResults='+maxR;
+    var r    = await fetch(url, ctrl ? {signal:ctrl.signal} : {});
+    if(tid) clearTimeout(tid);
+    if(!r.ok){ _PA_CACHE[eid]=[]; cb([]); return; }
+    var d = await r.json();
+    var contacts = (d.results||[]).map(function(c){
+      var p = c.properties||{};
+      var n = ((p.firstname||'')+' '+(p.lastname||'')).trim()||p.email||c.id||'';
+      return{id:String(c.id),name:n,co:p.company||'',email:p.email||'',reg:(p.createdate||'').split('T')[0]};
+    });
     _PA_CACHE[eid] = contacts;
     cb(contacts);
   }catch(e){
@@ -1194,7 +1190,7 @@ rPa = function(){
     return '<table class="dt"><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
   }
 
-  // ── ALLE EVENTS: Kontakte aller Events laden (parallel) ────────────────────
+  // ── ALLE EVENTS: direkt aus Segment-Liste 202 laden (ein Call, keine Duplikate) ──
   if(_paSc==='all'){
     var totRegs=EVS.reduce(function(s,e){return s+e.regs;},0);
     var totAtt =EVS.reduce(function(s,e){return s+e.attendees;},0);
@@ -1208,50 +1204,43 @@ rPa = function(){
     ]);
     document.getElementById('pa-cnt').innerHTML=
       '<div style="padding:40px;text-align:center;color:var(--hint);font-size:13px">'+
-      '<div style="font-size:22px;margin-bottom:10px">&#x21BB;</div>Lade alle Teilnehmer…</div>';
+      '<div style="font-size:22px;margin-bottom:10px">&#x21BB;</div>Lade Teilnehmer…</div>';
 
-    // Für jedes Event parallel Kontakte laden
-    Promise.all(EVS.map(function(ev){
-      return new Promise(function(resolve){
-        if(_PA_CACHE[ev.id]!==undefined){resolve({ev:ev,contacts:_PA_CACHE[ev.id]});return;}
-        fetch(_HS+'?action=event_contacts&eventId='+encodeURIComponent(ev.id))
-          .then(function(r){return r.json();})
-          .then(function(d){
-            var cs=(d.results||[]).map(function(c){
-              var p=c.properties||{};
-              var n=((p.firstname||'')+' '+(p.lastname||'')).trim()||p.email||c.id||'';
-              return{id:String(c.id),name:n,co:p.company||'',email:p.email||'',reg:(p.createdate||'').split('T')[0]};
-            });
-            _PA_CACHE[ev.id]=cs;
-            resolve({ev:ev,contacts:cs});
-          })
-          .catch(function(){resolve({ev:ev,contacts:[]});});
-      });
-    })).then(function(results){
-      var all=[];
-      results.forEach(function(r){
-        r.contacts.forEach(function(c){
-          all.push(Object.assign({},c,{_evName:r.ev.name}));
+    // Einmal Liste 202 holen — alle Teilnehmer, keine Duplikate
+    fetch(_HS+'?action=list_all')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var all=(d.results||[]).map(function(c){
+          var p=c.properties||{};
+          var n=((p.firstname||'')+' '+(p.lastname||'')).trim()||p.email||c.id||'';
+          return{id:String(c.id),name:n,co:p.company||'',email:p.email||'',reg:(p.createdate||'').split('T')[0]};
         });
+        var filt=q?all.filter(function(p){return(p.name+p.co+p.email).toLowerCase().includes(q);}):all;
+        document.getElementById('pa-kpis').innerHTML=kLight4([
+          {l:'Registrierungen',  v:totRegs,     c:'#059669', s:'alle Events'},
+          {l:'Kontakte',         v:all.length,  c:'#2563EB', s:'in Liste'},
+          {l:'Teilnehmer',       v:totAtt,      c:'#2563EB', s:'erschienen'},
+          {l:'Nicht erschienen', v:totNosh,     c:'#D97706', s:'No-Show'}
+        ]);
+        if(!filt.length){
+          document.getElementById('pa-cnt').innerHTML='<div style="padding:32px;text-align:center;color:var(--hint)">Keine Teilnehmer gefunden</div>';
+          return;
+        }
+        var rows=filt.map(function(p){
+          return '<tr>'+
+            '<td style="width:32px">'+_mkAvatar(p.name)+'</td>'+
+            '<td style="font-weight:600">'+p.name+'</td>'+
+            '<td style="color:var(--mut)">'+p.co+'</td>'+
+            '<td style="color:var(--hint);font-size:12px">'+p.email+'</td>'+
+            '<td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td>'+
+            '</tr>';
+        }).join('');
+        // Keine Event-Spalte bei alle-Events (Liste hat keine Event-Zuordnung)
+        document.getElementById('pa-cnt').innerHTML=_renderTable(rows,false);
+      })
+      .catch(function(){
+        document.getElementById('pa-cnt').innerHTML='<div style="padding:32px;text-align:center;color:var(--hint)">Fehler beim Laden</div>';
       });
-      var filt=q?all.filter(function(p){return(p.name+p.co+p.email+(p._evName||'')).toLowerCase().includes(q);}):all;
-      if(!filt.length){
-        document.getElementById('pa-cnt').innerHTML='<div style="padding:32px;text-align:center;color:var(--hint)">Keine Teilnehmer gefunden</div>';
-        return;
-      }
-      var rows=filt.map(function(p){
-        var evLabel=p._evName?fmt(p._evName):'—';
-        return '<tr>'+
-          '<td style="width:32px">'+_mkAvatar(p.name)+'</td>'+
-          '<td style="font-weight:600">'+p.name+'</td>'+
-          '<td style="color:var(--mut)">'+p.co+'</td>'+
-          '<td style="color:var(--hint);font-size:12px">'+p.email+'</td>'+
-          '<td style="font-size:11px;color:var(--hint)">'+evLabel+'</td>'+
-          '<td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td>'+
-          '</tr>';
-      }).join('');
-      document.getElementById('pa-cnt').innerHTML=_renderTable(rows,true);
-    });
     return;
   }
 

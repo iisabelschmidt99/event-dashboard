@@ -53,6 +53,18 @@ exports.handler = async function(event) {
       return res(200, { results: normalized, total: normalized.length });
     }
 
+    // ── list_all: alle Kontakte aus Segment-Liste 202 (für "Alle Events" Ansicht) ──
+    if (p.action === 'list_all') {
+      const r = await fetch(
+        `${BASE}/contacts/v1/lists/${LIST_202}/contacts/all?count=100&property=firstname&property=lastname&property=email&property=company&property=createdate`,
+        { headers: h }
+      );
+      if (!r.ok) return res(r.status, { error: 'Liste nicht abrufbar' });
+      const d = await r.json();
+      const contacts = (d.contacts || []).map(mapListContact);
+      return res(200, { results: contacts, total: contacts.length, _method: 'list_202' });
+    }
+
     // ── event_contacts ────────────────────────────────────────────────────────
     if (p.action === 'event_contacts') {
       if (!p.eventId) return res(400, { error: 'eventId fehlt' });
@@ -82,36 +94,33 @@ exports.handler = async function(event) {
         }
       }
 
-      // ── Methode 2: Attendance Participations ─────────────────────────────
-      // GET /marketing/marketing-events/2026-03/participations/contacts/{id}/breakdown
-      // Ansatz: Alle Kontakte aus Segment-Liste 202 holen + nach Event filtern
+      // ── Methode 2: Participations mit Early Termination ─────────────────
+      // maxResults aus Query-Parameter (= ev.regs vom Dashboard)
+      const maxResults = Math.max(1, parseInt(p.maxResults || '50'));
+
       const listR = await fetch(
         `${BASE}/contacts/v1/lists/${LIST_202}/contacts/all?count=100&property=firstname&property=lastname&property=email&property=company&property=createdate`,
         { headers: h }
       );
       if (listR.ok) {
-        const listData  = await listR.json();
-        const allContacts = listData.contacts || [];
+        const allContacts = (await listR.json()).contacts || [];
+        const matched     = [];
 
-        // Für jeden Kontakt prüfen ob er an diesem Event teilgenommen hat
-        // (batch-weise, max 10 gleichzeitig um Rate Limits zu vermeiden)
-        const matched = [];
-        for (let i = 0; i < allContacts.length; i += 10) {
-          const batch  = allContacts.slice(i, i + 10);
-          const checks = await Promise.all(
-            batch.map(async c => {
-              const r = await fetch(
-                `${ME_BASE}/participations/contacts/${c.vid}/breakdown`,
-                { headers: h }
-              );
-              if (!r.ok) return null;
-              const d = await r.json();
-              const events = (d.results || []).map(x =>
-                String(x.associations?.marketingEvent?.marketingEventId || '')
-              );
-              return events.includes(String(eid)) ? c : null;
-            })
-          );
+        // Batches von 15 — stopp sobald maxResults erreicht
+        for (let i = 0; i < allContacts.length && matched.length < maxResults; i += 15) {
+          const batch  = allContacts.slice(i, i + 15);
+          const checks = await Promise.all(batch.map(async c => {
+            const r = await fetch(
+              `${ME_BASE}/participations/contacts/${c.vid}/breakdown`,
+              { headers: h }
+            );
+            if (!r.ok) return null;
+            const d = await r.json();
+            const ids = (d.results || []).map(x =>
+              String(x.associations?.marketingEvent?.marketingEventId || '')
+            );
+            return ids.includes(String(eid)) ? c : null;
+          }));
           matched.push(...checks.filter(Boolean));
         }
 
@@ -122,17 +131,9 @@ exports.handler = async function(event) {
             _method: 'participations_breakdown'
           });
         }
-
-        // Letzter Fallback: alle Listenkontakte ohne Event-Filter
-        if (allContacts.length > 0) {
-          return res(200, {
-            results: allContacts.map(mapListContact),
-            total:   allContacts.length,
-            _method: 'list_all_no_filter'
-          });
-        }
       }
 
+      // Keine Kontakte gefunden — leeres Array, KEIN Fallback auf alle
       return res(200, { results: [], total: 0, _method: 'none' });
     }
 
