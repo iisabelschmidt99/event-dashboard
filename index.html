@@ -57,11 +57,11 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 
 /* ── KPI STRIP (dark) ── */
 .kstrip{display:grid;grid-template-columns:repeat(5,1fr);gap:0}
-.kstrip .ki{padding:0 24px;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;justify-content:flex-start}
+.kstrip .ki{padding:0 24px;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
 .kstrip .ki:first-child{padding-left:0}
 .kstrip .ki:last-child{border-right:none;padding-right:0}
 .ki .kl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:7px;line-height:1;white-space:nowrap}
-.ki .kv{font-family:var(--fh);font-size:26px;font-weight:800;color:#fff;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ki .kv{font-family:'DM Sans',sans-serif;font-size:28px;font-weight:700;color:#fff;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em}
 .ki .ks{font-size:11px;color:rgba(255,255,255,.38);margin-top:5px;line-height:1;white-space:nowrap}
 
 /* ── KPI LIGHT ── */
@@ -620,7 +620,7 @@ function rOv(){
 
   document.getElementById('ov-kpis').innerHTML=kDark([
     {l:'Events gesamt',v:EVS.length,s:EVS.filter(e=>e.status==='upcoming').length+' bevorstehend'},
-    {l:'Anmeldungen',v:totR,s:'gesamt'},
+    {l:'Registrierungen',v:totR,s:EVS.reduce(function(s,e){return s+e.attendees;},0)+' erschienen'},
     {l:'Kosten erfasst',v:num(totC)+' \u20ac'},
     {l:'Deals gewonnen',v:won.length,s:num(wonV)+' \u20ac'},
     {l:'Konversion',v:conv+' %',s:allL.length+' Leads total'}
@@ -1176,67 +1176,125 @@ async function hsLoadContacts(eid, cb){
   }
 }
 
-// rPa überschreiben: live Kontakte statt Mock-Daten
+// rPa überschreiben: live Kontakte aus HubSpot
 var _origRPa = rPa;
 rPa = function(){
-  var eid = (document.getElementById('pa-ev')||{}).value||(EVS[0]&&EVS[0].id);
-  if(!eid){ _origRPa(); return; }
   var q = ((document.getElementById('pa-q')||{}).value||'').toLowerCase().trim();
-  var ev = EVS.find(function(e){return e.id===eid;});
 
-  // KPIs sofort aus Event-Daten (direkt aus HubSpot Marketing Events API)
-  var regs  = ev ? ev.regs          : 0;
-  var att   = ev ? ev.attendees     : 0;
-  var canc  = ev ? ev.cancellations : 0;
-  var nosh  = ev ? ev.noShows       : 0;
-  document.getElementById('pa-kpis').innerHTML = kLight4([
+  function _mkAvatar(name){
+    var cols=['#059669','#2563EB','#D97706','#8B5CF6','#0891B2'];
+    var c=cols[name.charCodeAt(0)%cols.length];
+    return '<div style="width:26px;height:26px;border-radius:50%;background:'+c+
+      ';display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0">'+
+      (name.slice(0,2).toUpperCase()||'?')+'</div>';
+  }
+
+  function _renderTable(rows, showEventCol){
+    var head='<th></th><th>Name</th><th>Unternehmen</th><th>E-Mail</th>'+(showEventCol?'<th>Event</th>':'')+'<th>Erstellt</th>';
+    return '<table class="dt"><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+
+  // ── ALLE EVENTS: Kontakte aller Events laden (parallel) ────────────────────
+  if(_paSc==='all'){
+    var totRegs=EVS.reduce(function(s,e){return s+e.regs;},0);
+    var totAtt =EVS.reduce(function(s,e){return s+e.attendees;},0);
+    var totCanc=EVS.reduce(function(s,e){return s+e.cancellations;},0);
+    var totNosh=EVS.reduce(function(s,e){return s+e.noShows;},0);
+    document.getElementById('pa-kpis').innerHTML=kLight4([
+      {l:'Registrierungen',  v:totRegs, c:'#059669', s:'alle Events'},
+      {l:'Stornierungen',    v:totCanc, c:'#EF4444', s:'alle Events'},
+      {l:'Teilnehmer',       v:totAtt,  c:'#2563EB', s:'erschienen'},
+      {l:'Nicht erschienen', v:totNosh, c:'#D97706', s:'No-Show'}
+    ]);
+    document.getElementById('pa-cnt').innerHTML=
+      '<div style="padding:40px;text-align:center;color:var(--hint);font-size:13px">'+
+      '<div style="font-size:22px;margin-bottom:10px">&#x21BB;</div>Lade alle Teilnehmer…</div>';
+
+    // Für jedes Event parallel Kontakte laden
+    Promise.all(EVS.map(function(ev){
+      return new Promise(function(resolve){
+        if(_PA_CACHE[ev.id]!==undefined){resolve({ev:ev,contacts:_PA_CACHE[ev.id]});return;}
+        fetch(_HS+'?action=event_contacts&eventId='+encodeURIComponent(ev.id))
+          .then(function(r){return r.json();})
+          .then(function(d){
+            var cs=(d.results||[]).map(function(c){
+              var p=c.properties||{};
+              var n=((p.firstname||'')+' '+(p.lastname||'')).trim()||p.email||c.id||'';
+              return{id:String(c.id),name:n,co:p.company||'',email:p.email||'',reg:(p.createdate||'').split('T')[0]};
+            });
+            _PA_CACHE[ev.id]=cs;
+            resolve({ev:ev,contacts:cs});
+          })
+          .catch(function(){resolve({ev:ev,contacts:[]});});
+      });
+    })).then(function(results){
+      var all=[];
+      results.forEach(function(r){
+        r.contacts.forEach(function(c){
+          all.push(Object.assign({},c,{_evName:r.ev.name}));
+        });
+      });
+      var filt=q?all.filter(function(p){return(p.name+p.co+p.email+(p._evName||'')).toLowerCase().includes(q);}):all;
+      if(!filt.length){
+        document.getElementById('pa-cnt').innerHTML='<div style="padding:32px;text-align:center;color:var(--hint)">Keine Teilnehmer gefunden</div>';
+        return;
+      }
+      var rows=filt.map(function(p){
+        var evLabel=p._evName?fmt(p._evName):'—';
+        return '<tr>'+
+          '<td style="width:32px">'+_mkAvatar(p.name)+'</td>'+
+          '<td style="font-weight:600">'+p.name+'</td>'+
+          '<td style="color:var(--mut)">'+p.co+'</td>'+
+          '<td style="color:var(--hint);font-size:12px">'+p.email+'</td>'+
+          '<td style="font-size:11px;color:var(--hint)">'+evLabel+'</td>'+
+          '<td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td>'+
+          '</tr>';
+      }).join('');
+      document.getElementById('pa-cnt').innerHTML=_renderTable(rows,true);
+    });
+    return;
+  }
+
+  // ── EINZELNES EVENT ────────────────────────────────────────────────────────
+  var eid=(document.getElementById('pa-ev')||{}).value||(EVS[0]&&EVS[0].id);
+  if(!eid){_origRPa();return;}
+  var ev=EVS.find(function(e){return e.id===eid;});
+  var regs=ev?ev.regs:0, att=ev?ev.attendees:0, canc=ev?ev.cancellations:0, nosh=ev?ev.noShows:0;
+
+  document.getElementById('pa-kpis').innerHTML=kLight4([
     {l:'Registrierungen',  v:regs, c:'#059669', s:'aktuelle Anmeldungen'},
     {l:'Stornierungen',    v:canc, c:'#EF4444', s:'abgesagt'},
     {l:'Teilnehmer',       v:att,  c:'#2563EB', s:'erschienen'},
     {l:'Nicht erschienen', v:nosh, c:'#D97706', s:'No-Show'}
   ]);
+  document.getElementById('pa-cnt').innerHTML=
+    '<div style="padding:40px;text-align:center;color:var(--hint);font-size:13px">'+
+    '<div style="font-size:22px;margin-bottom:10px">&#x21BB;</div>Lade Teilnehmer…</div>';
 
-  // Ladeindikator
-  document.getElementById('pa-cnt').innerHTML =
-    '<div style="padding:40px;text-align:center;color:var(--hint);font-size:13px">' +
-    '<div style="font-size:22px;margin-bottom:10px">&#x21BB;</div>Lade Teilnehmer aus HubSpot…</div>';
-
-  hsLoadContacts(eid, function(contacts){
-    var filt = q ? contacts.filter(function(p){
-      return (p.name+p.co+p.email).toLowerCase().includes(q);
-    }) : contacts;
-
-    document.getElementById('pa-kpis').innerHTML = kLight4([
-      {l:'Registrierungen',  v:regs,            c:'#059669', s:'aktuelle Anmeldungen'},
-      {l:'Stornierungen',    v:canc,            c:'#EF4444', s:'abgesagt'},
-      {l:'Teilnehmer',       v:att,             c:'#2563EB', s:'erschienen'},
-      {l:'Nicht erschienen', v:nosh,            c:'#D97706', s:'No-Show'}
+  hsLoadContacts(eid,function(contacts){
+    var filt=q?contacts.filter(function(p){return(p.name+p.co+p.email).toLowerCase().includes(q);}):contacts;
+    document.getElementById('pa-kpis').innerHTML=kLight4([
+      {l:'Registrierungen',  v:regs, c:'#059669', s:'aktuelle Anmeldungen'},
+      {l:'Stornierungen',    v:canc, c:'#EF4444', s:'abgesagt'},
+      {l:'Teilnehmer',       v:att,  c:'#2563EB', s:'erschienen'},
+      {l:'Nicht erschienen', v:nosh, c:'#D97706', s:'No-Show'}
     ]);
-
     if(!filt.length){
-      document.getElementById('pa-cnt').innerHTML =
+      document.getElementById('pa-cnt').innerHTML=
         '<div style="padding:32px;text-align:center;color:var(--hint);font-size:13px">'+
-        'Keine Kontaktdaten in HubSpot verfügbar.<br>'+
-        '<span style="font-size:11px">Registrierungen ('+regs+') sind in HubSpot erfasst, aber noch nicht mit Kontakt-Profilen verknüpft.</span></div>';
+        'Keine Kontaktdaten gefunden.<br><span style="font-size:11px;opacity:.6">'+regs+' Registrierungen in HubSpot erfasst.</span></div>';
       return;
     }
-
-    var rows = filt.map(function(p){
-      var cols=['#059669','#2563EB','#D97706','#8B5CF6','#0891B2'];
-      var c = cols[p.name.charCodeAt(0)%cols.length];
-      var av='<div style="width:26px;height:26px;border-radius:50%;background:'+c+';display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0">'+(p.name.slice(0,2).toUpperCase()||'?')+'</div>';
+    var rows=filt.map(function(p){
       return '<tr>'+
-        '<td style="width:32px">'+av+'</td>'+
+        '<td style="width:32px">'+_mkAvatar(p.name)+'</td>'+
         '<td style="font-weight:600">'+p.name+'</td>'+
         '<td style="color:var(--mut)">'+p.co+'</td>'+
         '<td style="color:var(--hint);font-size:12px">'+p.email+'</td>'+
         '<td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td>'+
         '</tr>';
     }).join('');
-
-    document.getElementById('pa-cnt').innerHTML =
-      '<table class="dt"><thead><tr><th></th><th>Name</th><th>Unternehmen</th>'+
-      '<th>E-Mail</th><th>Erstellt</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    document.getElementById('pa-cnt').innerHTML=_renderTable(rows,false);
   });
 };
 
