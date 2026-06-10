@@ -57,10 +57,10 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 
 /* ── KPI STRIP (dark) ── */
 .kstrip{display:grid;grid-template-columns:repeat(5,1fr);gap:0}
-.kstrip .ki{padding:0 24px;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.kstrip .ki{padding:0 24px;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-width:0}
 .kstrip .ki:first-child{padding-left:0}
 .kstrip .ki:last-child{border-right:none;padding-right:0}
-.ki .kl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:7px;line-height:1;white-space:nowrap}
+.ki .kl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:7px;line-height:1;white-space:nowrap;text-align:center}
 .ki .kv{font-family:'DM Sans',sans-serif;font-size:28px;font-weight:700;color:#fff;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em}
 .ki .ks{font-size:11px;color:rgba(255,255,255,.38);margin-top:5px;line-height:1;white-space:nowrap}
 
@@ -285,7 +285,15 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
       <div class="g4r" id="co-kpis"></div>
       <div class="g3r" id="co-cats"></div>
       <div id="co-form" class="add-form">
-        <div class="ul mb12">Neue Position</div>
+        <div class="fb mb12">
+          <div class="ul">Neue Position</div>
+          <div class="fg" style="gap:6px">
+            <span style="font-size:11px;color:var(--hint)">oder</span>
+            <button onclick="document.getElementById('co-pdf-file').click()" style="padding:4px 12px;background:var(--ink);border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;color:var(--lime);font-family:var(--fb)">&#128196; Rechnung/Angebot hochladen</button>
+            <input type="file" id="co-pdf-file" accept=".pdf" style="display:none" onchange="handleCoPdf(this)">
+          </div>
+        </div>
+        <div id="co-pdf-loading" style="display:none;padding:12px;text-align:center;color:var(--hint);font-size:12px"><span style="animation:spin .8s linear infinite;display:inline-block;margin-right:6px">&#x21BB;</span>Claude liest Rechnung aus&#x2026;</div>
         <div class="g4"><input class="fi" id="cfn" placeholder="Bezeichnung"><input class="fi" id="cfa" type="number" placeholder="Betrag &#8364;"><select class="fi" id="cfc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="cfs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div>
         <div class="g2"><select class="fi" id="cfev"><option value="">&#8212; Event &#8212;</option></select><input class="fi" id="cfd" type="date"></div>
         <div class="fg"><button class="btn" onclick="subCo()">Hinzuf&#252;gen</button><button class="btn-g" onclick="togF('co-form')">Abbrechen</button></div>
@@ -685,12 +693,16 @@ function rOv(){
   const totR=EVS.reduce((s,e)=>s+e.regs,0);
   const conv=allL.length?Math.round(won.length/allL.length*100):0;
 
+  // Registrierungen: aktive Liste-Kontakte (nicht HubSpot-Rohdaten)
+  var regDisplay = _listCount > 0 ? _listCount : totR;
+  // Gesamtbudget aus lokaler Budget-Planung
+  var totBudget = Object.values(_BUDGETS||{}).reduce(function(s,v){return s+(parseFloat(v)||0);},0);
   document.getElementById('ov-kpis').innerHTML=kDark([
     {l:'Events gesamt',v:EVS.length,s:EVS.filter(e=>e.status==='upcoming').length+' bevorstehend'},
-    {l:'Registrierungen',v:totR,s:EVS.reduce(function(s,e){return s+e.attendees;},0)+' erschienen'},
-    {l:'Kosten erfasst',v:num(totC)+' \u20ac'},
-    {l:'Deals gewonnen',v:won.length,s:num(wonV)+' \u20ac'},
-    {l:'Konversion',v:conv+' %',s:allL.length+' Leads total'}
+    {l:'Registrierungen',v:regDisplay,s:EVS.reduce(function(s,e){return s+e.attendees;},0)+' erschienen'},
+    {l:'Kosten erfasst',v:num(totC)+' \u20ac',s:totBudget?num(totBudget)+' \u20ac geplant':''},
+    {l:'Budget geplant',v:totBudget?num(totBudget)+' \u20ac':'\u2014',s:totBudget&&totC?Math.round(totC/totBudget*100)+'% verbraucht':''},
+    {l:'Stornierungen',v:EVS.reduce(function(s,e){return s+e.cancellations;},0),s:'alle Events'}
   ]);
 
   // ── STAT ROW: 4 donut/stat cards ──
@@ -1257,6 +1269,52 @@ async function analyzePdfWithClaude(base64,filename){
   }
 }
 
+function handleCoPdf(input){
+  var file=input.files[0];
+  if(!file)return;
+  if(file.size>10*1024*1024){alert('Datei zu gro\xdf (max. 10 MB)');return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var b64=e.target.result.split(',')[1];
+    analyzeCoPdf(b64);
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+async function analyzeCoPdf(base64){
+  document.getElementById('co-pdf-loading').style.display='';
+  try{
+    var r=await fetch('/.netlify/functions/anthropic',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-opus-4-6',max_tokens:512,
+        messages:[{role:'user',content:[
+          {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+          {type:'text',text:'Lies diese Rechnung/dieses Angebot und extrahiere: Firmenname, Gesamtbetrag in Euro (Zahl), Kategorie (nur "location"/"catering"/"marketing"), kurze Beschreibung (max 5 Worter). Antworte NUR mit JSON: {"anbieter":"","betrag":0,"kategorie":"location","beschreibung":""}'}
+        ]}]
+      })
+    });
+    var data=await r.json();
+    var text=data.content&&data.content[0]&&data.content[0].text;
+    var match=text&&text.match(/\{[\s\S]*\}/);
+    if(!match)throw new Error('Kein JSON');
+    var p=JSON.parse(match[0]);
+    // Formularfelder befuellen
+    document.getElementById('cfn').value=(p.beschreibung||p.anbieter)+(p.anbieter?' ('+p.anbieter+')':'');
+    document.getElementById('cfa').value=p.betrag||'';
+    document.getElementById('cfc').value=p.kategorie||'location';
+    document.getElementById('cfs').value='Angebot';
+    // Formular aufklappen
+    document.getElementById('co-form').classList.add('on');
+    alert('\u2728 Claude hat gefunden: '+p.anbieter+' \u2013 '+p.betrag+' \u20ac. Bitte Event w\xe4hlen und Datum eintragen.');
+  }catch(err){
+    alert('Fehler: '+err.message+'\n\nANTHROPIC_API_KEY in Netlify gesetzt?');
+  }finally{
+    document.getElementById('co-pdf-loading').style.display='none';
+  }
+}
+
 function acceptBudgetAI(){
   var eid=document.getElementById('bud-ev').value||(EVS[0]&&EVS[0].id);
   var anbieter=document.getElementById('bud-ai-anbieter').value.trim();
@@ -1278,6 +1336,7 @@ function acceptBudgetAI(){
 ═══════════════════════════════════════════════════════════ */
 const _HS = '/.netlify/functions/hubspot';
 const _PA_CACHE = {};
+var _listCount = 0;
 
 function _hsMapStatus(s){
   return({SCHEDULED:'upcoming',COMPLETED:'completed',CANCELLED:'cancelled',DRAFT:'draft'}[(s||'').toUpperCase()]||'draft');
@@ -1380,6 +1439,7 @@ rPa = function(){
     fetch(_HS+'?action=list_all')
       .then(function(r){return r.json();})
       .then(function(d){
+        _listCount = (d.results||[]).length;
         var all=(d.results||[]).map(function(c){
           var p=c.properties||{};
           var n=((p.firstname||'')+' '+(p.lastname||'')).trim()||p.email||c.id||'';
