@@ -266,22 +266,89 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 
   <!-- COSTS -->
   <div id="m-co" class="pane">
-    <div class="fb mb20">
-      <div class="fg">
-        <div class="scope"><button class="sb on" id="co-a" onclick="coSc('all')">Alle Events</button><button class="sb" id="co-s" onclick="coSc('single')">&#8212;</button></div>
-        <select class="fi" id="co-ev" style="max-width:280px;display:none" onchange="rCo()"></select>
+
+    <!-- Sub-Navigation: Kostenpositionen / Budgetplanung -->
+    <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid var(--ink)">
+      <button class="tab on" id="co-sub-pos" onclick="coSubTab('positionen',this)" style="font-size:12px;padding:8px 20px">Kostenpositionen</button>
+      <button class="tab" id="co-sub-bud" onclick="coSubTab('budget',this)" style="font-size:12px;padding:8px 20px">Budgetplanung</button>
+    </div>
+
+    <!-- ── KOSTENPOSITIONEN ── -->
+    <div id="co-pane-positionen">
+      <div class="fb mb20">
+        <div class="fg">
+          <div class="scope"><button class="sb on" id="co-a" onclick="coSc('all')">Alle Events</button><button class="sb" id="co-s" onclick="coSc('single')">&#8212;</button></div>
+          <select class="fi" id="co-ev" style="max-width:280px;display:none" onchange="rCo()"></select>
+        </div>
+        <button class="btn" onclick="togF('co-form')">+ Position hinzuf&#252;gen</button>
       </div>
-      <button class="btn" onclick="togF('co-form')">+ Position hinzuf&#252;gen</button>
+      <div class="g4r" id="co-kpis"></div>
+      <div class="g3r" id="co-cats"></div>
+      <div id="co-form" class="add-form">
+        <div class="ul mb12">Neue Position</div>
+        <div class="g4"><input class="fi" id="cfn" placeholder="Bezeichnung"><input class="fi" id="cfa" type="number" placeholder="Betrag &#8364;"><select class="fi" id="cfc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="cfs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div>
+        <div class="g2"><select class="fi" id="cfev"><option value="">&#8212; Event &#8212;</option></select><input class="fi" id="cfd" type="date"></div>
+        <div class="fg"><button class="btn" onclick="subCo()">Hinzuf&#252;gen</button><button class="btn-g" onclick="togF('co-form')">Abbrechen</button></div>
+      </div>
+      <div class="card"><table class="dt"><thead><tr><th>Datum</th><th>Position</th><th id="co-th-ev">Event</th><th>Kategorie</th><th>Betrag</th><th>Status</th></tr></thead><tbody id="co-tbody"></tbody></table></div>
     </div>
-    <div class="g4r" id="co-kpis"></div>
-    <div class="g3r" id="co-cats"></div>
-    <div id="co-form" class="add-form">
-      <div class="ul mb12">Neue Position</div>
-      <div class="g4"><input class="fi" id="cfn" placeholder="Bezeichnung"><input class="fi" id="cfa" type="number" placeholder="Betrag &#8364;"><select class="fi" id="cfc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="cfs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div>
-      <div class="g2"><select class="fi" id="cfev"><option value="">&#8212; Event &#8212;</option></select><input class="fi" id="cfd" type="date"></div>
-      <div class="fg"><button class="btn" onclick="subCo()">Hinzuf&#252;gen</button><button class="btn-g" onclick="togF('co-form')">Abbrechen</button></div>
+
+    <!-- ── BUDGETPLANUNG ── -->
+    <div id="co-pane-budget" style="display:none">
+      <div class="fb mb20">
+        <div class="fg">
+          <select class="fi" id="bud-ev" style="max-width:320px" onchange="rBudget()"></select>
+        </div>
+      </div>
+
+      <!-- Budget-Übersicht -->
+      <div id="bud-overview" class="g3r mb16"></div>
+
+      <!-- Budget setzen -->
+      <div class="card mb16">
+        <div class="sec">Gesamtbudget festlegen</div>
+        <div style="display:flex;gap:10px;align-items:flex-end">
+          <div style="flex:1">
+            <label class="fl">Budget &#8364; f&#252;r dieses Event</label>
+            <input class="fi" id="bud-input" type="number" placeholder="z.B. 5000" oninput="saveBudget()">
+          </div>
+          <div style="padding-bottom:1px;color:var(--hint);font-size:12px;white-space:nowrap">Wird lokal gespeichert</div>
+        </div>
+      </div>
+
+      <!-- Angebot hochladen -->
+      <div class="card">
+        <div class="sec">Angebot hochladen &amp; automatisch auslesen</div>
+        <div id="bud-upload-zone" onclick="document.getElementById('bud-file').click()" style="border:2px dashed var(--border);border-radius:8px;padding:32px;text-align:center;cursor:pointer;margin-bottom:16px;transition:border-color .15s" onmouseover="this.style.borderColor='var(--ink)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:28px;margin-bottom:8px">&#128196;</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">PDF-Angebot hier ablegen</div>
+          <div style="font-size:11px;color:var(--hint);margin-top:4px">oder klicken zum Ausw&#228;hlen &middot; max. 10 MB</div>
+        </div>
+        <input type="file" id="bud-file" accept=".pdf" style="display:none" onchange="handleBudgetPdf(this)">
+
+        <!-- AI-Ergebnis -->
+        <div id="bud-ai-result" style="display:none">
+          <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px;border-left:3px solid var(--lime)">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--hint);margin-bottom:10px">&#x2728; Claude hat folgendes gefunden</div>
+            <div class="g2" style="margin-bottom:0">
+              <div><label class="fl">Anbieter</label><input class="fi" id="bud-ai-anbieter" placeholder=""></div>
+              <div><label class="fl">Betrag &#8364;</label><input class="fi" id="bud-ai-betrag" type="number" placeholder=""></div>
+              <div><label class="fl">Kategorie</label><select class="fi" id="bud-ai-kat"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select></div>
+              <div><label class="fl">Beschreibung</label><input class="fi" id="bud-ai-desc" placeholder=""></div>
+            </div>
+          </div>
+          <div class="fg">
+            <button class="btn" onclick="acceptBudgetAI()">Als Kostenposition &#252;bernehmen</button>
+            <button class="btn-g" onclick="document.getElementById('bud-ai-result').style.display='none'">Verwerfen</button>
+          </div>
+        </div>
+
+        <div id="bud-ai-loading" style="display:none;padding:20px;text-align:center;color:var(--hint);font-size:13px">
+          <span style="display:inline-block;animation:spin .8s linear infinite;font-size:20px;margin-bottom:6px">&#x21BB;</span><br>
+          Claude liest das Angebot aus&#x2026;
+        </div>
+      </div>
     </div>
-    <div class="card"><table class="dt"><thead><tr><th>Datum</th><th>Position</th><th id="co-th-ev">Event</th><th>Kategorie</th><th>Betrag</th><th>Status</th></tr></thead><tbody id="co-tbody"></tbody></table></div>
   </div>
 
   <!-- LEADS -->
@@ -594,7 +661,7 @@ function leSc(s){_leSc=s;document.getElementById('le-a').classList.toggle('on',s
 function plSc(s){_plSc=s;document.getElementById('pl-a').classList.toggle('on',s==='all');document.getElementById('pl-s').classList.toggle('on',s==='single');document.getElementById('pl-ev').style.display=s==='single'?'':'none';rPl();}
 function paSc(s){_paSc=s;document.getElementById('pa-a').classList.toggle('on',s==='all');document.getElementById('pa-s').classList.toggle('on',s==='single');document.getElementById('pa-ev').style.display=s==='single'?'':'none';rPa();}
 function popSels(){
-  ['co-ev','le-ev','pl-ev','pa-ev','cfev','lm-ev'].forEach(id=>{
+  ['co-ev','le-ev','pl-ev','pa-ev','cfev','lm-ev','bud-ev'].forEach(id=>{
     const sel=document.getElementById(id);if(!sel)return;
     const isMain=!['cfev','lm-ev'].includes(id);
     if(isMain)sel.innerHTML='';
@@ -1101,6 +1168,109 @@ function subEv(){
   ['m-n','m-c','m-d','m-t','m-ds'].forEach(id=>document.getElementById(id).value='');
 }
 
+
+// ════════════════════════════════════════════════
+// KOSTEN SUB-TABS
+// ════════════════════════════════════════════════
+function coSubTab(name, btn){
+  document.getElementById('co-pane-positionen').style.display = name==='positionen' ? '' : 'none';
+  document.getElementById('co-pane-budget').style.display     = name==='budget'     ? '' : 'none';
+  btn.closest('div').querySelectorAll('.tab').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  if(name==='budget') rBudget();
+}
+
+var _BUDGETS = {};
+try{ _BUDGETS = JSON.parse(localStorage.getItem('fenyx_budgets')||'{}'); }catch(e){}
+
+function saveBudget(){
+  var eid = document.getElementById('bud-ev').value;
+  if(!eid) return;
+  _BUDGETS[eid] = parseFloat(document.getElementById('bud-input').value)||0;
+  try{ localStorage.setItem('fenyx_budgets', JSON.stringify(_BUDGETS)); }catch(e){}
+  rBudget();
+}
+
+function rBudget(){
+  var eid = document.getElementById('bud-ev').value||(EVS[0]&&EVS[0].id);
+  if(!eid) return;
+  var budget = _BUDGETS[eid]||0;
+  var spent  = sumC(eC(eid));
+  var remain = budget - spent;
+  var pct    = budget ? Math.min(100,Math.round(spent/budget*100)) : 0;
+  var col    = pct>90?'#EF4444':pct>70?'#D97706':'#059669';
+  var inp = document.getElementById('bud-input');
+  if(inp && !inp.value && budget) inp.value = budget;
+  document.getElementById('bud-overview').innerHTML =
+    kLight4([
+      {l:'Budget gesamt',v:num(budget)+' \u20ac',c:'var(--text)',s:'geplant'},
+      {l:'Ausgegeben',v:num(spent)+' \u20ac',c:col,s:pct+'% des Budgets'},
+      {l:'Verbleibend',v:num(Math.max(0,remain))+' \u20ac',c:remain>=0?'#059669':'#EF4444',s:remain<0?'\xdcberschreitung!':'verf\xfcgbar'}
+    ])+
+    '<div class="kl-card"><div class="kl">Budget-Auslastung</div>'+
+    '<div style="margin-top:8px">'+bar(spent,budget||1,col,8)+'</div>'+
+    '<div class="ks" style="margin-top:6px">'+pct+'% verbraucht</div></div>';
+}
+
+function handleBudgetPdf(input){
+  var file=input.files[0];
+  if(!file)return;
+  if(file.size>10*1024*1024){alert('Datei zu gro\xdf (max. 10 MB)');return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var b64=e.target.result.split(',')[1];
+    analyzePdfWithClaude(b64,file.name);
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+async function analyzePdfWithClaude(base64,filename){
+  document.getElementById('bud-ai-loading').style.display='';
+  document.getElementById('bud-ai-result').style.display='none';
+  try{
+    var r=await fetch('/.netlify/functions/anthropic',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-opus-4-6',max_tokens:512,
+        messages:[{role:'user',content:[
+          {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+          {type:'text',text:'Lies dieses Angebot und extrahiere: Firmenname, Gesamtbetrag in Euro, Kategorie (nur "location" / "catering" / "marketing"), kurze Leistungsbeschreibung (max 6 Worter). Antworte NUR mit JSON: {"anbieter":"","betrag":0,"kategorie":"location","beschreibung":""}'}
+        ]}]
+      })
+    });
+    var data=await r.json();
+    var text=data.content&&data.content[0]&&data.content[0].text;
+    if(!text)throw new Error('Keine Antwort von Claude');
+    var match=text.match(/\{[\s\S]*\}/);
+    if(!match)throw new Error('Kein JSON gefunden');
+    var p=JSON.parse(match[0]);
+    document.getElementById('bud-ai-anbieter').value=p.anbieter||'';
+    document.getElementById('bud-ai-betrag').value=p.betrag||'';
+    document.getElementById('bud-ai-kat').value=p.kategorie||'location';
+    document.getElementById('bud-ai-desc').value=p.beschreibung||'';
+    document.getElementById('bud-ai-result').style.display='';
+  }catch(err){
+    alert('Fehler beim Auslesen: '+err.message+'\n\nANTHROPIC_API_KEY in Netlify pruefen.');
+  }finally{
+    document.getElementById('bud-ai-loading').style.display='none';
+  }
+}
+
+function acceptBudgetAI(){
+  var eid=document.getElementById('bud-ev').value||(EVS[0]&&EVS[0].id);
+  var anbieter=document.getElementById('bud-ai-anbieter').value.trim();
+  var betrag=parseFloat(document.getElementById('bud-ai-betrag').value)||0;
+  var kat=document.getElementById('bud-ai-kat').value;
+  var desc=document.getElementById('bud-ai-desc').value.trim()||anbieter;
+  if(!anbieter||!betrag||!eid){alert('Anbieter und Betrag pruefen');return;}
+  if(!_C[eid])_C[eid]=[];
+  _C[eid].push({id:gid(),n:desc+' ('+anbieter+')',a:betrag,cat:kat,s:'Angebot',d:new Date().toISOString().slice(0,10)});
+  document.getElementById('bud-ai-result').style.display='none';
+  rBudget();rCo();rOv();
+  alert('\u2713 Als Kostenposition gespeichert: '+desc);
+}
+
 /* ═══════════════════════════════════════════════════════════
    HUBSPOT LIVE DATA
    Lädt Events und Event-Kontakte via /.netlify/functions/hubspot
@@ -1215,10 +1385,11 @@ rPa = function(){
           var n=((p.firstname||'')+' '+(p.lastname||'')).trim()||p.email||c.id||'';
           return{id:String(c.id),name:n,co:p.company||'',email:p.email||'',reg:(p.createdate||'').split('T')[0]};
         });
+        // Liste 202 ist die Quelle der Wahrheit — nicht ev.regs-Summe
         var filt=q?all.filter(function(p){return(p.name+p.co+p.email).toLowerCase().includes(q);}):all;
         document.getElementById('pa-kpis').innerHTML=kLight4([
-          {l:'Registrierungen',  v:totRegs,     c:'#059669', s:'alle Events'},
-          {l:'Kontakte',         v:all.length,  c:'#2563EB', s:'in Liste'},
+          {l:'Registrierungen',  v:all.length,  c:'#059669', s:'aktuelle Anmeldungen'},
+          {l:'Stornierungen',    v:totCanc,     c:'#EF4444', s:'alle Events'},
           {l:'Teilnehmer',       v:totAtt,      c:'#2563EB', s:'erschienen'},
           {l:'Nicht erschienen', v:totNosh,     c:'#D97706', s:'No-Show'}
         ]);
