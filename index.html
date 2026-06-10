@@ -1120,17 +1120,20 @@ async function hsLoadEvents(){
     if(!r.ok) return;
     var d = await r.json();
     if(!d.results||!d.results.length) return;
-    // Function gibt bereits normalisiertes Format zurück (kein properties-Wrapper)
+    // Function gibt normalisiertes Format zurück (kein properties-Wrapper)
     EVS = d.results.map(function(e){
       return{
-        id:     e.id     || '',
-        name:   e.name   || '',
-        type:   e.type   || '',
-        desc:   e.desc   || '',
-        date:   e.date   || '',
-        status: e.status || 'upcoming',
-        regs:   parseInt(e.regs || 0),
-        org:    e.org    || ''
+        id:            e.id            || '',
+        name:          e.name          || '',
+        type:          e.type          || '',
+        desc:          e.desc          || '',
+        date:          e.date          || '',
+        status:        e.status        || 'upcoming',
+        regs:          parseInt(e.regs          || 0),
+        attendees:     parseInt(e.attendees     || 0),
+        cancellations: parseInt(e.cancellations || 0),
+        noShows:       parseInt(e.noShows       || 0),
+        org:           e.org           || ''
       };
     });
     _PA_CACHE; // Reset cache
@@ -1181,13 +1184,16 @@ rPa = function(){
   var q = ((document.getElementById('pa-q')||{}).value||'').toLowerCase().trim();
   var ev = EVS.find(function(e){return e.id===eid;});
 
-  // KPIs sofort aus Event-Daten
-  var regs = ev ? ev.regs : 0;
+  // KPIs sofort aus Event-Daten (direkt aus HubSpot Marketing Events API)
+  var regs  = ev ? ev.regs          : 0;
+  var att   = ev ? ev.attendees     : 0;
+  var canc  = ev ? ev.cancellations : 0;
+  var nosh  = ev ? ev.noShows       : 0;
   document.getElementById('pa-kpis').innerHTML = kLight4([
-    {l:'Registrierungen',v:regs,c:'#059669',s:'lt. HubSpot'},
-    {l:'',v:'',c:'var(--hint)',s:''},
-    {l:'',v:'',c:'var(--hint)',s:''},
-    {l:'',v:'',c:'var(--hint)',s:''}
+    {l:'Registrierungen',  v:regs, c:'#059669', s:'aktuelle Anmeldungen'},
+    {l:'Stornierungen',    v:canc, c:'#EF4444', s:'abgesagt'},
+    {l:'Teilnehmer',       v:att,  c:'#2563EB', s:'erschienen'},
+    {l:'Nicht erschienen', v:nosh, c:'#D97706', s:'No-Show'}
   ]);
 
   // Ladeindikator
@@ -1200,12 +1206,11 @@ rPa = function(){
       return (p.name+p.co+p.email).toLowerCase().includes(q);
     }) : contacts;
 
-    var srcNote = contacts._method||'';
     document.getElementById('pa-kpis').innerHTML = kLight4([
-      {l:'Registrierungen',v:regs,c:'#059669',s:'lt. HubSpot'},
-      {l:'Kontakte geladen',v:contacts.length,c:'#2563EB',s:'aus HubSpot'},
-      {l:'',v:'',c:'var(--hint)',s:''},
-      {l:'',v:'',c:'var(--hint)',s:''}
+      {l:'Registrierungen',  v:regs,            c:'#059669', s:'aktuelle Anmeldungen'},
+      {l:'Stornierungen',    v:canc,            c:'#EF4444', s:'abgesagt'},
+      {l:'Teilnehmer',       v:att,             c:'#2563EB', s:'erschienen'},
+      {l:'Nicht erschienen', v:nosh,            c:'#D97706', s:'No-Show'}
     ]);
 
     if(!filt.length){

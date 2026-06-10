@@ -37,14 +37,17 @@ exports.handler = async function(event) {
       // Response-Format normalisieren → Dashboard-Format
       const data = tryParse(body);
       const normalized = (data.results || []).map(e => ({
-        id:     String(e.objectId || e.id || ''),
-        name:   e.eventName || '',
-        type:   e.eventType || '',
-        desc:   e.eventDescription || '',
-        date:   (e.startDateTime || '').split('T')[0],
-        status: e.eventCancelled ? 'cancelled' : e.eventCompleted ? 'completed' : 'upcoming',
-        regs:   parseInt(e.registrants || 0),
-        org:    e.eventOrganizer || ''
+        id:            String(e.objectId || e.id || ''),
+        name:          e.eventName || '',
+        type:          e.eventType || '',
+        desc:          e.eventDescription || '',
+        date:          (e.startDateTime || '').split('T')[0],
+        status:        e.eventCancelled ? 'cancelled' : e.eventCompleted ? 'completed' : 'upcoming',
+        regs:          parseInt(e.registrants    || 0),
+        attendees:     parseInt(e.attendees      || 0),
+        cancellations: parseInt(e.cancellations  || 0),
+        noShows:       parseInt(e.noShows        || 0),
+        org:           e.eventOrganizer || ''
       }));
 
       return res(200, { results: normalized, total: normalized.length });
