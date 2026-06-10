@@ -57,7 +57,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 
 /* ── KPI STRIP (dark) ── */
 .kstrip{display:grid;grid-template-columns:repeat(5,1fr);gap:0}
-.kstrip .ki{padding:0 24px;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-width:0}
+.kstrip .ki{padding:16px 24px;border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;min-width:0}
 .kstrip .ki:first-child{padding-left:0}
 .kstrip .ki:last-child{border-right:none;padding-right:0}
 .ki .kl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:7px;line-height:1;white-space:nowrap;text-align:center}
@@ -246,7 +246,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
   <!-- OV -->
   <div id="m-ov" class="pane on">
     <!-- dark KPI strip -->
-    <div class="card-ink mb20"><div class="kstrip" id="ov-kpis"></div></div>
+    <div class="card-ink mb20"><div id="ov-kpis"></div></div>
     <!-- stat row: 3 donuts + category bar -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px" id="ov-stat-row"></div>
     <!-- calendar + event list -->
@@ -280,19 +280,16 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
           <div class="scope"><button class="sb on" id="co-a" onclick="coSc('all')">Alle Events</button><button class="sb" id="co-s" onclick="coSc('single')">&#8212;</button></div>
           <select class="fi" id="co-ev" style="max-width:280px;display:none" onchange="rCo()"></select>
         </div>
-        <button class="btn" onclick="togF('co-form')">+ Position hinzuf&#252;gen</button>
+        <div class="fg">
+          <button class="btn-g" onclick="document.getElementById('co-pdf-file').click()">&#128196; Rechnung hochladen</button>
+          <input type="file" id="co-pdf-file" accept=".pdf" style="display:none" onchange="handleCoPdf(this)">
+          <button class="btn" onclick="togF('co-form')">+ Position hinzuf&#252;gen</button>
+        </div>
       </div>
       <div class="g4r" id="co-kpis"></div>
       <div class="g3r" id="co-cats"></div>
       <div id="co-form" class="add-form">
-        <div class="fb mb12">
-          <div class="ul">Neue Position</div>
-          <div class="fg" style="gap:6px">
-            <span style="font-size:11px;color:var(--hint)">oder</span>
-            <button onclick="document.getElementById('co-pdf-file').click()" style="padding:4px 12px;background:var(--ink);border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;color:var(--lime);font-family:var(--fb)">&#128196; Rechnung/Angebot hochladen</button>
-            <input type="file" id="co-pdf-file" accept=".pdf" style="display:none" onchange="handleCoPdf(this)">
-          </div>
-        </div>
+        <div class="ul mb12">Neue Position</div>
         <div id="co-pdf-loading" style="display:none;padding:12px;text-align:center;color:var(--hint);font-size:12px"><span style="animation:spin .8s linear infinite;display:inline-block;margin-right:6px">&#x21BB;</span>Claude liest Rechnung aus&#x2026;</div>
         <div class="g4"><input class="fi" id="cfn" placeholder="Bezeichnung"><input class="fi" id="cfa" type="number" placeholder="Betrag &#8364;"><select class="fi" id="cfc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="cfs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div>
         <div class="g2"><select class="fi" id="cfev"><option value="">&#8212; Event &#8212;</option></select><input class="fi" id="cfd" type="date"></div>
@@ -312,50 +309,39 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
       <!-- Budget-Übersicht -->
       <div id="bud-overview" class="g3r mb16"></div>
 
-      <!-- Budget setzen -->
+      <!-- Budget: Übersicht + Eingabe -->
+      <div class="g2r mb0" style="margin-bottom:16px">
+        <div class="card">
+          <div class="sec">Gesamtbudget (Event)</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <input class="fi" id="bud-input" type="number" placeholder="Budget in &#8364;" oninput="saveBudget()" style="flex:1">
+            <span style="color:var(--hint);font-size:11px;white-space:nowrap">lokal gespeichert</span>
+          </div>
+        </div>
+        <div class="card"><div id="bud-overview"></div></div>
+      </div>
+
+      <!-- Budgetpositionen Tabelle -->
       <div class="card mb16">
-        <div class="sec">Gesamtbudget festlegen</div>
-        <div style="display:flex;gap:10px;align-items:flex-end">
-          <div style="flex:1">
-            <label class="fl">Budget &#8364; f&#252;r dieses Event</label>
-            <input class="fi" id="bud-input" type="number" placeholder="z.B. 5000" oninput="saveBudget()">
-          </div>
-          <div style="padding-bottom:1px;color:var(--hint);font-size:12px;white-space:nowrap">Wird lokal gespeichert</div>
-        </div>
-      </div>
-
-      <!-- Angebot hochladen -->
-      <div class="card">
-        <div class="sec">Angebot hochladen &amp; automatisch auslesen</div>
-        <div id="bud-upload-zone" onclick="document.getElementById('bud-file').click()" style="border:2px dashed var(--border);border-radius:8px;padding:32px;text-align:center;cursor:pointer;margin-bottom:16px;transition:border-color .15s" onmouseover="this.style.borderColor='var(--ink)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="font-size:28px;margin-bottom:8px">&#128196;</div>
-          <div style="font-size:13px;font-weight:600;color:var(--text)">PDF-Angebot hier ablegen</div>
-          <div style="font-size:11px;color:var(--hint);margin-top:4px">oder klicken zum Ausw&#228;hlen &middot; max. 10 MB</div>
-        </div>
-        <input type="file" id="bud-file" accept=".pdf" style="display:none" onchange="handleBudgetPdf(this)">
-
-        <!-- AI-Ergebnis -->
-        <div id="bud-ai-result" style="display:none">
-          <div style="background:var(--bg);border-radius:8px;padding:16px;margin-bottom:14px;border-left:3px solid var(--lime)">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--hint);margin-bottom:10px">&#x2728; Claude hat folgendes gefunden</div>
-            <div class="g2" style="margin-bottom:0">
-              <div><label class="fl">Anbieter</label><input class="fi" id="bud-ai-anbieter" placeholder=""></div>
-              <div><label class="fl">Betrag &#8364;</label><input class="fi" id="bud-ai-betrag" type="number" placeholder=""></div>
-              <div><label class="fl">Kategorie</label><select class="fi" id="bud-ai-kat"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select></div>
-              <div><label class="fl">Beschreibung</label><input class="fi" id="bud-ai-desc" placeholder=""></div>
-            </div>
-          </div>
+        <div class="fb mb14">
+          <div class="sec" style="margin-bottom:0">Geplante Budgetpositionen</div>
           <div class="fg">
-            <button class="btn" onclick="acceptBudgetAI()">Als Kostenposition &#252;bernehmen</button>
-            <button class="btn-g" onclick="document.getElementById('bud-ai-result').style.display='none'">Verwerfen</button>
+            <button class="btn-g" onclick="document.getElementById('bud-pdf-file').click()">&#128196; Angebot hochladen</button>
+            <input type="file" id="bud-pdf-file" accept=".pdf" style="display:none" onchange="handleBudgetPdf(this)">
+            <button class="btn" onclick="addBudgetRow()">+ Zeile</button>
           </div>
         </div>
-
-        <div id="bud-ai-loading" style="display:none;padding:20px;text-align:center;color:var(--hint);font-size:13px">
-          <span style="display:inline-block;animation:spin .8s linear infinite;font-size:20px;margin-bottom:6px">&#x21BB;</span><br>
-          Claude liest das Angebot aus&#x2026;
+        <div id="bud-ai-loading" style="display:none;padding:12px;text-align:center;color:var(--hint);font-size:12px">
+          <span style="animation:spin .8s linear infinite;display:inline-block;margin-right:6px">&#x21BB;</span>Claude liest Angebot aus&#x2026;
         </div>
+        <table class="dt" id="bud-table">
+          <thead><tr><th>Bezeichnung</th><th>Kategorie</th><th>Budget &#8364;</th><th>Notiz</th><th></th></tr></thead>
+          <tbody id="bud-tbody"></tbody>
+        </table>
+        <div id="bud-empty" style="padding:24px;text-align:center;color:var(--hint);font-size:13px">Noch keine Budgetpositionen &#183; Zeile hinzuf&#252;gen oder Angebot hochladen</div>
       </div>
+
+
     </div>
   </div>
 
@@ -418,7 +404,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
     <div class="fg"><span id="d-badge"></span><a id="d-hs" href="#" target="_blank" class="btn-hs">HubSpot &#8599;</a></div>
   </div>
   <!-- dark KPI -->
-  <div class="card-ink mb20"><div class="kstrip" id="d-kpis"></div></div>
+  <div class="card-ink mb20"><div id="d-kpis"></div></div>
   <!-- tabs -->
   <div class="tabs">
     <button class="tab on" onclick="dTab('d-ov',this)">&#220;bersicht</button>
@@ -1193,13 +1179,20 @@ function coSubTab(name, btn){
 }
 
 var _BUDGETS = {};
+var _BUDGET_ITEMS = {}; // {eventId: [{id, bezeichnung, kategorie, betrag, notiz}]}
 try{ _BUDGETS = JSON.parse(localStorage.getItem('fenyx_budgets')||'{}'); }catch(e){}
+try{ _BUDGET_ITEMS = JSON.parse(localStorage.getItem('fenyx_budget_items')||'{}'); }catch(e){}
+
+function _saveBudgetData(){
+  try{ localStorage.setItem('fenyx_budgets', JSON.stringify(_BUDGETS)); }catch(e){}
+  try{ localStorage.setItem('fenyx_budget_items', JSON.stringify(_BUDGET_ITEMS)); }catch(e){}
+}
 
 function saveBudget(){
   var eid = document.getElementById('bud-ev').value;
   if(!eid) return;
   _BUDGETS[eid] = parseFloat(document.getElementById('bud-input').value)||0;
-  try{ localStorage.setItem('fenyx_budgets', JSON.stringify(_BUDGETS)); }catch(e){}
+  _saveBudgetData();
   rBudget();
 }
 
@@ -1207,26 +1200,73 @@ function rBudget(){
   var eid = document.getElementById('bud-ev').value||(EVS[0]&&EVS[0].id);
   if(!eid) return;
   var budget = _BUDGETS[eid]||0;
+  var items  = _BUDGET_ITEMS[eid]||[];
+  var itemSum= items.reduce(function(s,x){return s+(parseFloat(x.betrag)||0);},0);
   var spent  = sumC(eC(eid));
-  var remain = budget - spent;
-  var pct    = budget ? Math.min(100,Math.round(spent/budget*100)) : 0;
+  var pct    = budget ? Math.min(100,Math.round(itemSum/budget*100)) : 0;
   var col    = pct>90?'#EF4444':pct>70?'#D97706':'#059669';
+
+  // Sync input
   var inp = document.getElementById('bud-input');
-  if(inp && !inp.value && budget) inp.value = budget;
+  if(inp && parseFloat(inp.value)!==budget) inp.value = budget||'';
+
+  // Overview KPIs (3 + bar)
   document.getElementById('bud-overview').innerHTML =
-    kLight4([
-      {l:'Budget gesamt',v:num(budget)+' \u20ac',c:'var(--text)',s:'geplant'},
-      {l:'Ausgegeben',v:num(spent)+' \u20ac',c:col,s:pct+'% des Budgets'},
-      {l:'Verbleibend',v:num(Math.max(0,remain))+' \u20ac',c:remain>=0?'#059669':'#EF4444',s:remain<0?'\xdcberschreitung!':'verf\xfcgbar'}
-    ])+
-    '<div class="kl-card"><div class="kl">Budget-Auslastung</div>'+
-    '<div style="margin-top:8px">'+bar(spent,budget||1,col,8)+'</div>'+
-    '<div class="ks" style="margin-top:6px">'+pct+'% verbraucht</div></div>';
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">'+
+    [
+      {l:'Budget gesamt',v:num(budget)+' €',c:'var(--text)'},
+      {l:'Geplant',v:num(itemSum)+' €',c:col},
+      {l:'Tatsächlich',v:num(spent)+' €',c:spent>budget&&budget?'#EF4444':'var(--text)'}
+    ].map(function(k){return '<div><div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hint);margin-bottom:4px">'+k.l+'</div><div style="font-size:18px;font-weight:700;color:'+k.c+'">'+k.v+'</div></div>';}).join('')+
+    '</div>'+
+    bar(itemSum,budget||1,col,6);
+
+  // Table rows
+  var tbody = document.getElementById('bud-tbody');
+  var empty = document.getElementById('bud-empty');
+  if(!tbody) return;
+  if(!items.length){
+    tbody.innerHTML='';
+    if(empty) empty.style.display='';
+    return;
+  }
+  if(empty) empty.style.display='none';
+  var catMap = {location:'Location & Technik',catering:'Catering & Bewirtung',marketing:'Marketing & Speaker'};
+  tbody.innerHTML = items.map(function(item){
+    return '<tr>'+
+      '<td style="font-weight:500">'+item.bezeichnung+'</td>'+
+      '<td><span class="cp cp-'+item.kategorie+'">'+catMap[item.kategorie]+'</span></td>'+
+      '<td style="font-weight:700">'+num(item.betrag)+' €</td>'+
+      '<td style="color:var(--hint);font-size:12px">'+(item.notiz||'—')+'</td>'+
+      '<td><button onclick="delBudgetRow(\''+eid+'\',\''+item.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:14px;padding:0 4px">\xd7</button></td>'+
+      '</tr>';
+  }).join('');
+}
+
+function addBudgetRow(){
+  var eid=document.getElementById('bud-ev').value||(EVS[0]&&EVS[0].id);
+  if(!eid){alert('Bitte Event ausw\xe4hlen');return;}
+  var bez=prompt('Bezeichnung (z.B. "Catering Angebot"):','');
+  if(!bez) return;
+  var bet=parseFloat(prompt('Betrag in €:','0'))||0;
+  var kat=prompt('Kategorie: location / catering / marketing','location');
+  if(!['location','catering','marketing'].includes(kat)) kat='location';
+  if(!_BUDGET_ITEMS[eid]) _BUDGET_ITEMS[eid]=[];
+  _BUDGET_ITEMS[eid].push({id:gid(),bezeichnung:bez,kategorie:kat,betrag:bet,notiz:''});
+  _saveBudgetData();
+  rBudget();
+}
+
+function delBudgetRow(eid,id){
+  if(!_BUDGET_ITEMS[eid]) return;
+  _BUDGET_ITEMS[eid]=_BUDGET_ITEMS[eid].filter(function(x){return x.id!==id;});
+  _saveBudgetData();
+  rBudget();
 }
 
 function handleBudgetPdf(input){
   var file=input.files[0];
-  if(!file)return;
+  if(!file) return;
   if(file.size>10*1024*1024){alert('Datei zu gro\xdf (max. 10 MB)');return;}
   var reader=new FileReader();
   reader.onload=function(e){
@@ -1239,7 +1279,6 @@ function handleBudgetPdf(input){
 
 async function analyzePdfWithClaude(base64,filename){
   document.getElementById('bud-ai-loading').style.display='';
-  document.getElementById('bud-ai-result').style.display='none';
   try{
     var r=await fetch('/.netlify/functions/anthropic',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -1247,87 +1286,37 @@ async function analyzePdfWithClaude(base64,filename){
         model:'claude-opus-4-6',max_tokens:512,
         messages:[{role:'user',content:[
           {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-          {type:'text',text:'Lies dieses Angebot und extrahiere: Firmenname, Gesamtbetrag in Euro, Kategorie (nur "location" / "catering" / "marketing"), kurze Leistungsbeschreibung (max 6 Worter). Antworte NUR mit JSON: {"anbieter":"","betrag":0,"kategorie":"location","beschreibung":""}'}
-        ]}]
-      })
-    });
-    var data=await r.json();
-    var text=data.content&&data.content[0]&&data.content[0].text;
-    if(!text)throw new Error('Keine Antwort von Claude');
-    var match=text.match(/\{[\s\S]*\}/);
-    if(!match)throw new Error('Kein JSON gefunden');
-    var p=JSON.parse(match[0]);
-    document.getElementById('bud-ai-anbieter').value=p.anbieter||'';
-    document.getElementById('bud-ai-betrag').value=p.betrag||'';
-    document.getElementById('bud-ai-kat').value=p.kategorie||'location';
-    document.getElementById('bud-ai-desc').value=p.beschreibung||'';
-    document.getElementById('bud-ai-result').style.display='';
-  }catch(err){
-    alert('Fehler beim Auslesen: '+err.message+'\n\nANTHROPIC_API_KEY in Netlify pruefen.');
-  }finally{
-    document.getElementById('bud-ai-loading').style.display='none';
-  }
-}
-
-function handleCoPdf(input){
-  var file=input.files[0];
-  if(!file)return;
-  if(file.size>10*1024*1024){alert('Datei zu gro\xdf (max. 10 MB)');return;}
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var b64=e.target.result.split(',')[1];
-    analyzeCoPdf(b64);
-  };
-  reader.readAsDataURL(file);
-  input.value='';
-}
-
-async function analyzeCoPdf(base64){
-  document.getElementById('co-pdf-loading').style.display='';
-  try{
-    var r=await fetch('/.netlify/functions/anthropic',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-opus-4-6',max_tokens:512,
-        messages:[{role:'user',content:[
-          {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-          {type:'text',text:'Lies diese Rechnung/dieses Angebot und extrahiere: Firmenname, Gesamtbetrag in Euro (Zahl), Kategorie (nur "location"/"catering"/"marketing"), kurze Beschreibung (max 5 Worter). Antworte NUR mit JSON: {"anbieter":"","betrag":0,"kategorie":"location","beschreibung":""}'}
+          {type:'text',text:'Lies dieses Angebot und extrahiere: Firmenname, Gesamtbetrag in Euro (Zahl), Kategorie (nur "location"/"catering"/"marketing"), kurze Beschreibung (max 5 Wörter). Antworte NUR mit JSON: {"anbieter":"","betrag":0,"kategorie":"location","beschreibung":""}'}
         ]}]
       })
     });
     var data=await r.json();
     var text=data.content&&data.content[0]&&data.content[0].text;
     var match=text&&text.match(/\{[\s\S]*\}/);
-    if(!match)throw new Error('Kein JSON');
+    if(!match) throw new Error('Kein JSON');
     var p=JSON.parse(match[0]);
-    // Formularfelder befuellen
-    document.getElementById('cfn').value=(p.beschreibung||p.anbieter)+(p.anbieter?' ('+p.anbieter+')':'');
-    document.getElementById('cfa').value=p.betrag||'';
-    document.getElementById('cfc').value=p.kategorie||'location';
-    document.getElementById('cfs').value='Angebot';
-    // Formular aufklappen
-    document.getElementById('co-form').classList.add('on');
-    alert('\u2728 Claude hat gefunden: '+p.anbieter+' \u2013 '+p.betrag+' \u20ac. Bitte Event w\xe4hlen und Datum eintragen.');
+    // Direkt als Budget-Zeile hinzufügen
+    var eid=document.getElementById('bud-ev').value||(EVS[0]&&EVS[0].id);
+    if(!eid){alert('Bitte Event ausw\xe4hlen');return;}
+    if(!_BUDGET_ITEMS[eid]) _BUDGET_ITEMS[eid]=[];
+    _BUDGET_ITEMS[eid].push({
+      id:gid(),
+      bezeichnung:(p.beschreibung||p.anbieter)+' ('+p.anbieter+')',
+      kategorie:p.kategorie||'location',
+      betrag:parseFloat(p.betrag)||0,
+      notiz:'PDF: '+filename
+    });
+    _saveBudgetData();
+    rBudget();
+    alert('✨ Angebot ausgelesen: '+p.anbieter+' – '+p.betrag+' €');
   }catch(err){
     alert('Fehler: '+err.message+'\n\nANTHROPIC_API_KEY in Netlify gesetzt?');
   }finally{
-    document.getElementById('co-pdf-loading').style.display='none';
+    document.getElementById('bud-ai-loading').style.display='none';
   }
 }
 
-function acceptBudgetAI(){
-  var eid=document.getElementById('bud-ev').value||(EVS[0]&&EVS[0].id);
-  var anbieter=document.getElementById('bud-ai-anbieter').value.trim();
-  var betrag=parseFloat(document.getElementById('bud-ai-betrag').value)||0;
-  var kat=document.getElementById('bud-ai-kat').value;
-  var desc=document.getElementById('bud-ai-desc').value.trim()||anbieter;
-  if(!anbieter||!betrag||!eid){alert('Anbieter und Betrag pruefen');return;}
-  if(!_C[eid])_C[eid]=[];
-  _C[eid].push({id:gid(),n:desc+' ('+anbieter+')',a:betrag,cat:kat,s:'Angebot',d:new Date().toISOString().slice(0,10)});
-  document.getElementById('bud-ai-result').style.display='none';
-  rBudget();rCo();rOv();
-  alert('\u2713 Als Kostenposition gespeichert: '+desc);
-}
+// acceptBudgetAI removed — PDF flow now adds directly to budget table
 
 /* ═══════════════════════════════════════════════════════════
    HUBSPOT LIVE DATA
