@@ -188,7 +188,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 .fi{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text);outline:none;background:var(--card);font-family:var(--fb)}
 .fi:focus{border-color:var(--ink)}
 .fl{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
-.add-form{background:var(--bg);border-radius:9px;padding:18px;margin-bottom:14px;border:1px solid var(--border);display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
 .add-form.on{display:block}
 .g4{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:9px}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:9px}
@@ -281,10 +281,17 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
           <select class="fi" id="co-ev" style="max-width:280px;display:none" onchange="rCo()"></select>
         </div>
         <div class="fg">
-          <button class="btn-g" onclick="document.getElementById('co-pdf-file').click()">&#128196; Rechnung hochladen</button>
-          <input type="file" id="co-pdf-file" accept=".pdf" style="display:none" onchange="handleCoPdf(this)">
+          <select class="fi" id="co-pdf-ev" style="max-width:260px" title="Event f&#252;r Rechnung">
+            <option value="">Event f&#252;r Rechnung&#8230;</option>
+          </select>
+          <button class="btn-g" id="co-pdf-btn" onclick="document.getElementById('co-pdf-file').click()">&#128196; Rechnung hochladen</button>
+          <input type="file" id="co-pdf-file" accept=".pdf,application/pdf" style="display:none" onchange="handleCoPdf(this)">
           <button class="btn" onclick="togF('co-form')">+ Position hinzuf&#252;gen</button>
         </div>
+      </div>
+      <div id="co-pdf-loading" style="display:none;padding:14px 18px;margin-bottom:14px;background:#FEF9EC;border:1px solid #FCD34D;border-radius:9px;color:#78350F;font-size:13px;font-weight:500">
+        <span style="animation:spin .8s linear infinite;display:inline-block;margin-right:8px">&#x21BB;</span>
+        <span id="co-pdf-loading-txt">Claude liest Rechnung aus&#x2026; (10&#8211;30 Sek.)</span>
       </div>
       <div class="g4r" id="co-kpis"></div>
       <div class="g3r" id="co-cats"></div>
