@@ -315,7 +315,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
           <div class="sec">Gesamtbudget (Event)</div>
           <div style="display:flex;gap:10px;align-items:center">
             <input class="fi" id="bud-input" type="number" placeholder="Budget in &#8364;" oninput="saveBudget()" style="flex:1">
-            <span style="color:var(--hint);font-size:11px;white-space:nowrap">lokal gespeichert</span>
+            <span id="bud-save-hint" style="color:var(--hint);font-size:11px;white-space:nowrap">Datenbank</span>
           </div>
         </div>
         <div class="card"><div id="bud-overview"></div></div>
@@ -866,6 +866,54 @@ function calClick(day,enc,e){
 function closePop(){document.getElementById('pop').style.display='none';}
 
 // ════════════════════════════════════════════════
+// SUPABASE API
+// ════════════════════════════════════════════════
+var _API = '/.netlify/functions/api';
+var _BUDGET_SAVE_TMR = null;
+
+function _budHint(msg, err){
+  var el = document.getElementById('bud-save-hint');
+  if(!el) return;
+  el.textContent = msg || 'Datenbank';
+  el.style.color = err ? '#EF4444' : 'var(--hint)';
+}
+
+async function apiFetch(method, resource, query, body){
+  var qs = new URLSearchParams(Object.assign({resource:resource}, query||{}));
+  var opts = {method:method, headers:{'Content-Type':'application/json'}};
+  if(body) opts.body = JSON.stringify(body);
+  var r = await fetch(_API+'?'+qs, opts);
+  var d = await r.json().catch(function(){return {};});
+  if(!r.ok) throw new Error(d.error||r.statusText||('HTTP '+r.status));
+  return d;
+}
+
+function _eventMeta(eid){
+  var ev = EVS.find(function(e){return e.id===eid;});
+  return ev ? {name:ev.name,type:ev.type,desc:ev.desc,date:ev.date,status:ev.status,regs:ev.regs} : {};
+}
+
+async function apiLoadFinancials(){
+  try{
+    var results = await Promise.all([
+      apiFetch('GET','budgets'),
+      apiFetch('GET','costs'),
+      apiFetch('GET','leads')
+    ]);
+    _BUDGETS = results[0].totals || {};
+    _BUDGET_ITEMS = results[0].items || {};
+    _C = results[1].byEvent || {};
+    _L = results[2].byEvent || {};
+    _budHint('Datenbank');
+    rAll();
+    if(_SEL && document.getElementById('v-d').style.display!=='none') rDetail();
+  }catch(e){
+    console.warn('apiLoadFinancials:', e.message);
+    _budHint('Offline', true);
+  }
+}
+
+// ════════════════════════════════════════════════
 // COSTS
 // ════════════════════════════════════════════════
 function rCo(){
@@ -896,9 +944,70 @@ function togF(id){document.getElementById(id).classList.toggle('on');}
 function subCo(){
   const n=document.getElementById('cfn').value.trim(),a=parseFloat(document.getElementById('cfa').value),cat=document.getElementById('cfc').value,s=document.getElementById('cfs').value,eid=document.getElementById('cfev').value,d=document.getElementById('cfd').value;
   if(!n||!a||!eid)return;
-  if(!_C[eid])_C[eid]=[];_C[eid].push({id:gid(),n:n,a:a,cat:cat,s:s,d:d});
-  document.getElementById('cfn').value='';document.getElementById('cfa').value='';
-  rCo();rOv();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
+  apiFetch('POST','costs',{},{event_id:eid,n:n,a:a,cat:cat,s:s,d:d||null,event:_eventMeta(eid)})
+    .then(function(created){
+      if(!_C[eid])_C[eid]=[];
+      _C[eid].push(created);
+      document.getElementById('cfn').value='';document.getElementById('cfa').value='';
+      rCo();rOv();
+      if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
+    })
+    .catch(function(e){alert('Fehler: '+e.message);});
+}
+
+function handleCoPdf(input){
+  var file=input.files[0];
+  if(!file) return;
+  if(file.size>10*1024*1024){alert('Datei zu gro\xdf (max. 10 MB)');return;}
+  var eid=(_coSc==='single'&&document.getElementById('co-ev').value)||document.getElementById('cfev').value||(EVS[0]&&EVS[0].id);
+  if(!eid){alert('Bitte Event ausw\xe4hlen (Dropdown oder Einzelevent-Filter)');input.value='';return;}
+  document.getElementById('co-pdf-loading').style.display='';
+  var reader=new FileReader();
+  reader.onload=function(e){analyzeCostPdfWithClaude(e.target.result.split(',')[1],file.name,eid);};
+  reader.onerror=function(){document.getElementById('co-pdf-loading').style.display='none';alert('PDF konnte nicht gelesen werden');};
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+async function analyzeCostPdfWithClaude(base64,filename,eid){
+  try{
+    var r=await fetch('/.netlify/functions/anthropic',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-opus-4-6',max_tokens:512,
+        messages:[{role:'user',content:[
+          {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+          {type:'text',text:'Lies diese Rechnung und extrahiere: Lieferant/Firma, Gesamtbetrag in Euro (Zahl, brutto), Kategorie (nur "location"/"catering"/"marketing"), kurze Beschreibung (max 5 Wörter), Status (nur "Angebot"/"beauftragt"/"bezahlt"). Antworte NUR mit JSON: {"anbieter":"","betrag":0,"kategorie":"catering","beschreibung":"","status":"bezahlt"}'}
+        ]}]
+      })
+    });
+    var data=await r.json();
+    if(!r.ok) throw new Error(data.error?.message||data.error||'Anthropic-Fehler');
+    var text=data.content&&data.content[0]&&data.content[0].text;
+    var match=text&&text.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('Kein JSON in Claude-Antwort');
+    var p=JSON.parse(match[0]);
+    var status=['Angebot','beauftragt','bezahlt'].includes(p.status)?p.status:'bezahlt';
+    var kat=['location','catering','marketing'].includes(p.kategorie)?p.kategorie:'catering';
+    var created=await apiFetch('POST','costs',{},{event_id:eid,
+      n:(p.beschreibung||p.anbieter)+' ('+p.anbieter+')',
+      a:parseFloat(p.betrag)||0,
+      cat:kat,
+      s:status,
+      d:new Date().toISOString().slice(0,10),
+      source_note:'PDF: '+filename,
+      event:_eventMeta(eid)
+    });
+    if(!_C[eid])_C[eid]=[];
+    _C[eid].push(created);
+    rCo();rOv();rBudget();
+    if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
+    alert('\u2728 Rechnung gespeichert: '+p.anbieter+' \u2013 '+p.betrag+' \u20ac');
+  }catch(err){
+    alert('Fehler: '+err.message+'\n\nPr\xfcfe ANTHROPIC_API_KEY und SUPABASE-Keys in Netlify.');
+  }finally{
+    document.getElementById('co-pdf-loading').style.display='none';
+  }
 }
 
 // ════════════════════════════════════════════════
@@ -984,14 +1093,19 @@ function subLead(){
   const ow=document.getElementById('lm-ow').value.trim();
   const note=document.getElementById('lm-no').value.trim();
   if(!ct||!co||!eid)return;
-  if(!_L[eid])_L[eid]=[];
-  if(_lmTarget?.leadId){
-    _L[eid]=_L[eid].map(l=>l.id===_lmTarget.leadId?{...l,ct,co,em,ph,v,st,ow,note}:l);
-  } else {
-    _L[eid].push({id:gid(),ct,co,em,ph,date:new Date().toISOString().slice(0,10),v,st,ow,note});
-  }
-  closeLModal();rLe();rOv();
-  if(_SEL&&document.getElementById('v-d').style.display!=='none')rDLe();
+  var payload={event_id:eid,ct:ct,co:co,em:em,ph:ph,v:v,st:st,ow:ow,note:note,event:_eventMeta(eid)};
+  var prom=_lmTarget&&_lmTarget.leadId
+    ? apiFetch('PUT','leads',{},{id:_lmTarget.leadId,...payload})
+    : apiFetch('POST','leads',{},payload);
+  prom.then(function(saved){
+    var oldEid=_lmTarget&&_lmTarget.evId;
+    if(oldEid&&oldEid!==eid&&_L[oldEid]) _L[oldEid]=_L[oldEid].filter(function(l){return l.id!==saved.id;});
+    if(!_L[eid])_L[eid]=[];
+    var idx=_L[eid].findIndex(function(l){return l.id===saved.id;});
+    if(idx>=0)_L[eid][idx]=saved; else _L[eid].push(saved);
+    closeLModal();rLe();rOv();
+    if(_SEL&&document.getElementById('v-d').style.display!=='none'){rDLe();rDetail();}
+  }).catch(function(e){alert('Fehler: '+e.message);});
 }
 
 // ════════════════════════════════════════════════
@@ -1118,9 +1232,14 @@ function rDCo(){
 }
 function subDCo(){
   const n=document.getElementById('dcn').value.trim(),a=parseFloat(document.getElementById('dca').value),cat=document.getElementById('dcc').value,s=document.getElementById('dcs').value,d=document.getElementById('dcd').value;
-  if(!n||!a)return;
-  if(!_C[_SEL])_C[_SEL]=[];_C[_SEL].push({id:gid(),n:n,a:a,cat:cat,s:s,d:d});
-  rDCo();rCo();rOv();
+  if(!n||!a||!_SEL)return;
+  apiFetch('POST','costs',{},{event_id:_SEL,n:n,a:a,cat:cat,s:s,d:d||null,event:_eventMeta(_SEL)})
+    .then(function(created){
+      if(!_C[_SEL])_C[_SEL]=[];
+      _C[_SEL].push(created);
+      rDCo();rCo();rOv();
+    })
+    .catch(function(e){alert('Fehler: '+e.message);});
 }
 
 function rDLe(){
@@ -1179,20 +1298,27 @@ function coSubTab(name, btn){
 }
 
 var _BUDGETS = {};
-var _BUDGET_ITEMS = {}; // {eventId: [{id, bezeichnung, kategorie, betrag, notiz}]}
-try{ _BUDGETS = JSON.parse(localStorage.getItem('fenyx_budgets')||'{}'); }catch(e){}
-try{ _BUDGET_ITEMS = JSON.parse(localStorage.getItem('fenyx_budget_items')||'{}'); }catch(e){}
+var _BUDGET_ITEMS = {};
 
-function _saveBudgetData(){
-  try{ localStorage.setItem('fenyx_budgets', JSON.stringify(_BUDGETS)); }catch(e){}
-  try{ localStorage.setItem('fenyx_budget_items', JSON.stringify(_BUDGET_ITEMS)); }catch(e){}
+async function apiSaveBudgetTotal(eid, amount){
+  await apiFetch('PUT','budgets',{},{event_id:eid,total_amount:amount,event:_eventMeta(eid)});
+  _BUDGETS[eid] = amount;
+  _budHint('Gespeichert');
 }
 
 function saveBudget(){
   var eid = document.getElementById('bud-ev').value;
   if(!eid) return;
-  _BUDGETS[eid] = parseFloat(document.getElementById('bud-input').value)||0;
-  _saveBudgetData();
+  var amount = parseFloat(document.getElementById('bud-input').value)||0;
+  _BUDGETS[eid] = amount;
+  clearTimeout(_BUDGET_SAVE_TMR);
+  _budHint('Speichern…');
+  _BUDGET_SAVE_TMR = setTimeout(function(){
+    apiSaveBudgetTotal(eid, amount).catch(function(e){
+      _budHint('Fehler', true);
+      console.warn('saveBudget:', e.message);
+    });
+  }, 500);
   rBudget();
 }
 
@@ -1251,17 +1377,23 @@ function addBudgetRow(){
   var bet=parseFloat(prompt('Betrag in €:','0'))||0;
   var kat=prompt('Kategorie: location / catering / marketing','location');
   if(!['location','catering','marketing'].includes(kat)) kat='location';
-  if(!_BUDGET_ITEMS[eid]) _BUDGET_ITEMS[eid]=[];
-  _BUDGET_ITEMS[eid].push({id:gid(),bezeichnung:bez,kategorie:kat,betrag:bet,notiz:''});
-  _saveBudgetData();
-  rBudget();
+  apiFetch('POST','budget_items',{},{event_id:eid,bezeichnung:bez,kategorie:kat,betrag:bet,notiz:'',event:_eventMeta(eid)})
+    .then(function(created){
+      if(!_BUDGET_ITEMS[eid]) _BUDGET_ITEMS[eid]=[];
+      _BUDGET_ITEMS[eid].push(created);
+      rBudget();
+    })
+    .catch(function(e){alert('Fehler: '+e.message);});
 }
 
 function delBudgetRow(eid,id){
   if(!_BUDGET_ITEMS[eid]) return;
-  _BUDGET_ITEMS[eid]=_BUDGET_ITEMS[eid].filter(function(x){return x.id!==id;});
-  _saveBudgetData();
-  rBudget();
+  apiFetch('DELETE','budget_items',{id:id})
+    .then(function(){
+      _BUDGET_ITEMS[eid]=_BUDGET_ITEMS[eid].filter(function(x){return x.id!==id;});
+      rBudget();
+    })
+    .catch(function(e){alert('Fehler: '+e.message);});
 }
 
 function handleBudgetPdf(input){
@@ -1298,15 +1430,15 @@ async function analyzePdfWithClaude(base64,filename){
     // Direkt als Budget-Zeile hinzufügen
     var eid=document.getElementById('bud-ev').value||(EVS[0]&&EVS[0].id);
     if(!eid){alert('Bitte Event ausw\xe4hlen');return;}
-    if(!_BUDGET_ITEMS[eid]) _BUDGET_ITEMS[eid]=[];
-    _BUDGET_ITEMS[eid].push({
-      id:gid(),
+    var created = await apiFetch('POST','budget_items',{},{event_id:eid,
       bezeichnung:(p.beschreibung||p.anbieter)+' ('+p.anbieter+')',
       kategorie:p.kategorie||'location',
       betrag:parseFloat(p.betrag)||0,
-      notiz:'PDF: '+filename
+      notiz:'PDF: '+filename,
+      event:_eventMeta(eid)
     });
-    _saveBudgetData();
+    if(!_BUDGET_ITEMS[eid]) _BUDGET_ITEMS[eid]=[];
+    _BUDGET_ITEMS[eid].push(created);
     rBudget();
     alert('✨ Angebot ausgelesen: '+p.anbieter+' – '+p.betrag+' €');
   }catch(err){
@@ -1360,6 +1492,8 @@ async function hsLoadEvents(){
     rAll();
     var s = document.getElementById('m-s');
     if(s) s.textContent = 'Netzwerkmarketing · '+EVS.length+' Events aus HubSpot';
+    apiFetch('POST','events',{},{events:EVS}).catch(function(e){console.warn('syncEvents:',e.message);});
+    apiLoadFinancials();
   }catch(e){ console.warn('hsLoadEvents:', e.message); }
 }
 
@@ -1507,8 +1641,9 @@ rPa = function(){
   });
 };
 
-// Beim Laden: Events aus HubSpot holen
+// Beim Laden: Finanzdaten + Events aus HubSpot
 document.addEventListener('DOMContentLoaded', function(){
+  apiLoadFinancials();
   hsLoadEvents();
 });
 </script>
