@@ -313,20 +313,17 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
         </div>
       </div>
 
-      <!-- Budget-Übersicht -->
-      <div id="bud-overview" class="g3r mb16"></div>
-
-      <!-- Budget: Übersicht + Eingabe -->
-      <div class="g2r mb0" style="margin-bottom:16px">
-        <div class="card">
-          <div class="sec">Gesamtbudget (Event)</div>
-          <div style="display:flex;gap:10px;align-items:center">
-            <input class="fi" id="bud-input" type="number" placeholder="Budget in &#8364;" oninput="saveBudget()" style="flex:1">
-            <span id="bud-save-hint" style="color:var(--hint);font-size:11px;white-space:nowrap">Datenbank</span>
-          </div>
+      <!-- Gesamtbudget eingeben -->
+      <div class="card mb16">
+        <div class="sec">Gesamtbudget (Event)</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input class="fi" id="bud-input" type="number" placeholder="Budget in &#8364;" oninput="saveBudget()" style="flex:1">
+          <span id="bud-save-hint" style="color:var(--hint);font-size:11px;white-space:nowrap">Datenbank</span>
         </div>
-        <div class="card"><div id="bud-overview"></div></div>
       </div>
+
+      <!-- Budget vs. Ausgaben -->
+      <div class="card mb16"><div id="bud-overview"></div></div>
 
       <!-- Budgetpositionen Tabelle -->
       <div class="card mb16">
@@ -972,7 +969,7 @@ function subCo(){
       if(!_C[eid])_C[eid]=[];
       _C[eid].push(created);
       document.getElementById('cfn').value='';document.getElementById('cfa').value='';
-      rCo();rOv();
+      rCo();rOv();rBudget();
       if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
     })
     .catch(function(e){alert('Fehler: '+e.message);});
@@ -1353,23 +1350,28 @@ function rBudget(){
   var items  = _BUDGET_ITEMS[eid]||[];
   var itemSum= items.reduce(function(s,x){return s+(parseFloat(x.betrag)||0);},0);
   var spent  = sumC(eC(eid));
-  var pct    = budget ? Math.min(100,Math.round(itemSum/budget*100)) : 0;
-  var col    = pct>90?'#EF4444':pct>70?'#D97706':'#059669';
+  var rem    = budget - spent;                       // verbleibend (negativ = überschritten)
+  var over   = budget>0 && spent>budget;
+  var spendPct = budget ? Math.round(spent/budget*100) : 0;
+  var RED='#EF4444', GREEN='#059669', AMBER='#D97706';
+  var barCol = !budget ? '#9CA3AF' : over ? RED : (spendPct>90 ? AMBER : GREEN);
 
   // Sync input
   var inp = document.getElementById('bud-input');
   if(inp && parseFloat(inp.value)!==budget) inp.value = budget||'';
 
-  // Overview KPIs (3 + bar)
+  // Overview KPIs (4 + spend bar) — Ausgegeben vs. Budget, rot bei Überschreitung
   document.getElementById('bud-overview').innerHTML =
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">'+
     [
       {l:'Budget gesamt',v:num(budget)+' €',c:'var(--text)'},
-      {l:'Geplant',v:num(itemSum)+' €',c:col},
-      {l:'Tatsächlich',v:num(spent)+' €',c:spent>budget&&budget?'#EF4444':'var(--text)'}
+      {l:'Geplant',v:num(itemSum)+' €',c:(budget&&itemSum>budget)?RED:'var(--text)'},
+      {l:'Ausgegeben',v:num(spent)+' €',c:over?RED:'var(--text)'},
+      {l:(over?'Überschreitung':'Verbleibend'),v:!budget?'—':((rem<0?'-':'')+num(Math.abs(rem))+' €'),c:!budget?'var(--text)':(rem<0?RED:GREEN)}
     ].map(function(k){return '<div><div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hint);margin-bottom:4px">'+k.l+'</div><div style="font-size:18px;font-weight:700;color:'+k.c+'">'+k.v+'</div></div>';}).join('')+
     '</div>'+
-    bar(itemSum,budget||1,col,6);
+    bar(spent,budget||1,barCol,6)+
+    '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px"><span style="color:var(--hint)">'+(budget?(spendPct+'% des Budgets ausgegeben'):'Kein Budget gesetzt')+'</span>'+(over?'<span style="color:'+RED+';font-weight:700">Budget um '+num(spent-budget)+' € überschritten</span>':'')+'</div>';
 
   // Table rows
   var tbody = document.getElementById('bud-tbody');
