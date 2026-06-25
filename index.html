@@ -189,6 +189,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 .fi:focus{border-color:var(--ink)}
 .fl{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:5px}
 @keyframes spin{to{transform:rotate(360deg)}}
+.add-form{background:var(--bg);border-radius:9px;padding:18px;margin-bottom:14px;border:1px solid var(--border);display:none}
 .add-form.on{display:block}
 .g4{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-bottom:9px}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:9px}
@@ -284,7 +285,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
           <select class="fi" id="co-pdf-ev" style="max-width:260px" title="Event f&#252;r Rechnung">
             <option value="">Event f&#252;r Rechnung&#8230;</option>
           </select>
-          <button class="btn-g" id="co-pdf-btn" onclick="document.getElementById('co-pdf-file').click()">&#128196; Rechnung hochladen</button>
+          <button class="btn-g" id="co-pdf-btn" onclick="document.getElementById('co-pdf-file').click()">Rechnung hochladen</button>
           <input type="file" id="co-pdf-file" accept=".pdf,application/pdf" style="display:none" onchange="handleCoPdf(this)">
           <button class="btn" onclick="togF('co-form')">+ Position hinzuf&#252;gen</button>
         </div>
@@ -297,12 +298,11 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
       <div class="g3r" id="co-cats"></div>
       <div id="co-form" class="add-form">
         <div class="ul mb12">Neue Position</div>
-        <div id="co-pdf-loading" style="display:none;padding:12px;text-align:center;color:var(--hint);font-size:12px"><span style="animation:spin .8s linear infinite;display:inline-block;margin-right:6px">&#x21BB;</span>Claude liest Rechnung aus&#x2026;</div>
         <div class="g4"><input class="fi" id="cfn" placeholder="Bezeichnung"><input class="fi" id="cfa" type="number" placeholder="Betrag &#8364;"><select class="fi" id="cfc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="cfs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div>
         <div class="g2"><select class="fi" id="cfev"><option value="">&#8212; Event &#8212;</option></select><input class="fi" id="cfd" type="date"></div>
         <div class="fg"><button class="btn" onclick="subCo()">Hinzuf&#252;gen</button><button class="btn-g" onclick="togF('co-form')">Abbrechen</button></div>
       </div>
-      <div class="card"><table class="dt"><thead><tr><th>Datum</th><th>Position</th><th id="co-th-ev">Event</th><th>Kategorie</th><th>Betrag</th><th>Status</th></tr></thead><tbody id="co-tbody"></tbody></table></div>
+      <div class="card"><table class="dt"><thead><tr><th>Datum</th><th>Position</th><th id="co-th-ev">Event</th><th>Kategorie</th><th>Betrag</th><th>Status</th><th></th></tr></thead><tbody id="co-tbody"></tbody></table></div>
     </div>
 
     <!-- ── BUDGETPLANUNG ── -->
@@ -333,7 +333,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
         <div class="fb mb14">
           <div class="sec" style="margin-bottom:0">Geplante Budgetpositionen</div>
           <div class="fg">
-            <button class="btn-g" onclick="document.getElementById('bud-pdf-file').click()">&#128196; Angebot hochladen</button>
+            <button class="btn-g" onclick="document.getElementById('bud-pdf-file').click()">Angebot hochladen</button>
             <input type="file" id="bud-pdf-file" accept=".pdf" style="display:none" onchange="handleBudgetPdf(this)">
             <button class="btn" onclick="addBudgetRow()">+ Zeile</button>
           </div>
@@ -507,7 +507,7 @@ let _P={};
 let _RQ={};
 
 // State
-let _SEL=null,_coSc='all',_leSc='all',_plSc='all',_paSc='all',_stF='all';
+let _SEL=null,_coSc='all',_leSc='all',_plSc='all',_paSc='all',_stF='all',_coCat='all';
 let _calY,_calM,_lmTarget=null;
 
 // ════════════════════════════════════════════════
@@ -662,9 +662,9 @@ function leSc(s){_leSc=s;document.getElementById('le-a').classList.toggle('on',s
 function plSc(s){_plSc=s;document.getElementById('pl-a').classList.toggle('on',s==='all');document.getElementById('pl-s').classList.toggle('on',s==='single');document.getElementById('pl-ev').style.display=s==='single'?'':'none';rPl();}
 function paSc(s){_paSc=s;document.getElementById('pa-a').classList.toggle('on',s==='all');document.getElementById('pa-s').classList.toggle('on',s==='single');document.getElementById('pa-ev').style.display=s==='single'?'':'none';rPa();}
 function popSels(){
-  ['co-ev','le-ev','pl-ev','pa-ev','cfev','lm-ev','bud-ev'].forEach(id=>{
+  ['co-ev','le-ev','pl-ev','pa-ev','cfev','co-pdf-ev','lm-ev','bud-ev'].forEach(id=>{
     const sel=document.getElementById(id);if(!sel)return;
-    const isMain=!['cfev','lm-ev'].includes(id);
+    const isMain=!['cfev','co-pdf-ev','lm-ev'].includes(id);
     if(isMain)sel.innerHTML='';
     EVS.forEach(ev=>{const o=document.createElement('option');o.value=ev.id;o.textContent=cit(ev.name)+' \u00b7 '+fmt(ev.name)+' \u00b7 '+fds(ev.date);sel.appendChild(o);});
     if(isMain&&!sel.onchange)sel.onchange=()=>updSc();
@@ -941,16 +941,32 @@ function rCo(){
     const cs=all.filter(c=>c.cat===k);
     const ct=cs.reduce((s,c)=>s+c.a,0);
     const cp=cs.filter(c=>c.s==='bezahlt').reduce((s,c)=>s+c.a,0);
-    return '<div class="card" style="border-top:3px solid '+m.c+'"><div style="font-size:12px;font-weight:600;color:'+m.c+';margin-bottom:8px">'+m.l+'</div><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+num(ct)+' \u20ac</div>'+bar(cp,ct||1,m.c)+'<div style="font-size:11px;color:var(--hint);margin-top:5px">'+num(cp)+' \u20ac bezahlt \u00b7 '+cs.length+' Pos.</div></div>';
+    const on=_coCat===k;
+    return '<div class="card" onclick="coCatFil(\''+k+'\')" style="cursor:pointer;border-top:3px solid '+m.c+(on?';box-shadow:0 0 0 2px '+m.c+' inset':'')+'"><div style="font-size:12px;font-weight:600;color:'+m.c+';margin-bottom:8px">'+m.l+(on?' \u2715':'')+'</div><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+num(ct)+' \u20ac</div>'+bar(cp,ct||1,m.c)+'<div style="font-size:11px;color:var(--hint);margin-top:5px">'+num(cp)+' \u20ac bezahlt \u00b7 '+cs.length+' Pos.</div></div>';
   }).join('');
-  const srt=[...all].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0));
-  document.getElementById('co-tbody').innerHTML=srt.length?srt.map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td>'+(_coSc==='all'?'<td style="font-size:12px;color:var(--hint)">'+cit(c._en)+' \u00b7 '+fmt(c._en)+'</td>':'')+'<td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td></tr>').join(''):'<tr><td colspan="6" style="padding:32px 0;text-align:center;color:var(--hint);font-size:13px">Keine Kostenpositionen erfasst<br><span style="font-size:11px;opacity:.6">Positionen über + Position hinzufügen eintragen</span></td></tr>';
+  const fil=_coCat==='all'?all:all.filter(c=>c.cat===_coCat);
+  const srt=[...fil].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0));
+  const cols=_coSc==='all'?7:6;
+  document.getElementById('co-tbody').innerHTML=srt.length?srt.map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td>'+(_coSc==='all'?'<td style="font-size:12px;color:var(--hint)">'+cit(c._en)+' \u00b7 '+fmt(c._en)+'</td>':'')+'<td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td>'+'<td><button onclick="delCo(\''+c.id+'\',\''+c._eid+'\')" title="L\u00f6schen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;padding:0 4px">\u00d7</button></td></tr>').join(''):'<tr><td colspan="'+cols+'" style="padding:32px 0;text-align:center;color:var(--hint);font-size:13px">Keine Kostenpositionen erfasst<br><span style="font-size:11px;opacity:.6">Positionen über + Position hinzufügen eintragen</span></td></tr>';
   updSc();
 }
 function togF(id){document.getElementById(id).classList.toggle('on');}
+function coCatFil(k){_coCat=(_coCat===k?'all':k);rCo();}
+function delCo(id,eid){
+  if(!confirm('Diese Position wirklich löschen?'))return;
+  apiFetch('DELETE','costs',{id:id})
+    .then(function(){
+      if(_C[eid])_C[eid]=_C[eid].filter(function(c){return String(c.id)!==String(id);});
+      rCo();rOv();rBudget();
+      if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
+    })
+    .catch(function(e){alert('Fehler beim Löschen: '+e.message);});
+}
 function subCo(){
   const n=document.getElementById('cfn').value.trim(),a=parseFloat(document.getElementById('cfa').value),cat=document.getElementById('cfc').value,s=document.getElementById('cfs').value,eid=document.getElementById('cfev').value,d=document.getElementById('cfd').value;
-  if(!n||!a||!eid)return;
+  if(!n){alert('Bitte eine Bezeichnung eingeben.');return;}
+  if(!a||isNaN(a)){alert('Bitte einen gültigen Betrag eingeben.');return;}
+  if(!eid){alert('Bitte ein Event auswählen.');return;}
   apiFetch('POST','costs',{},{event_id:eid,n:n,a:a,cat:cat,s:s,d:d||null,event:_eventMeta(eid)})
     .then(function(created){
       if(!_C[eid])_C[eid]=[];
@@ -966,7 +982,8 @@ function handleCoPdf(input){
   var file=input.files[0];
   if(!file) return;
   if(file.size>10*1024*1024){alert('Datei zu gro\xdf (max. 10 MB)');return;}
-  var eid=(_coSc==='single'&&document.getElementById('co-ev').value)||document.getElementById('cfev').value||(EVS[0]&&EVS[0].id);
+  var pdfev=document.getElementById('co-pdf-ev');
+  var eid=(pdfev&&pdfev.value)||(_coSc==='single'&&document.getElementById('co-ev').value)||document.getElementById('cfev').value||(EVS[0]&&EVS[0].id);
   if(!eid){alert('Bitte Event ausw\xe4hlen (Dropdown oder Einzelevent-Filter)');input.value='';return;}
   document.getElementById('co-pdf-loading').style.display='';
   var reader=new FileReader();
