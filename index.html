@@ -1310,16 +1310,36 @@ function rPa(){
     {l:'Abgesagt',v:can,c:'#991B1B',s:''},
     {l:'Gesamt',v:all.length,c:'var(--text)',s:''}
   ]);
+  _paFilt=filt;
   const evH=_paSc==='all'?'<th>Event</th>':'';
+  const paCols=_paSc==='all'?8:7;
   document.getElementById('pa-cnt').innerHTML=
-    '<table class="dt"><thead><tr><th>Name</th><th>Unternehmen</th><th>E-Mail</th>'+evH+'<th>Anmeldedatum</th><th>Status</th><th>Notiz</th></tr></thead><tbody>'+
-    (filt.length?filt.map(p=>{
+    '<table class="dt"><thead><tr><th>Name</th><th>Unternehmen</th><th>E-Mail</th>'+evH+'<th>Anmeldedatum</th><th>Status</th><th>Notiz</th><th></th></tr></thead><tbody>'+
+    (filt.length?filt.map((p,i)=>{
       const sc=p.status==='registered'?'b-ok':p.status==='waitlist'?'b-up':'b-no';
       const sl=p.status==='registered'?'Angemeldet':p.status==='waitlist'?'Warteliste':'Abgesagt';
-      return '<tr onclick="openEv(\''+p._eid+'\')"><td style="font-weight:600">'+p.name+'</td><td style="color:var(--mut)">'+p.co+'</td><td style="color:var(--hint);font-size:12px">'+p.email+'</td>'+(_paSc==='all'?'<td style="font-size:11px;color:var(--hint)">'+cit(p._en)+' \u00b7 '+fmt(p._en)+'</td>':'')+'<td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td><td><span class="b '+sc+'">'+sl+'</span></td><td style="color:var(--hint);font-size:12px">'+(p.note||'—')+'</td></tr>';
-    }).join(''):'<tr><td colspan="7" style="padding:24px 0;text-align:center;color:var(--hint)">Keine Teilnehmer gefunden</td></tr>')+
+      return '<tr onclick="openEv(\''+p._eid+'\')"><td style="font-weight:600">'+p.name+'</td><td style="color:var(--mut)">'+p.co+'</td><td style="color:var(--hint);font-size:12px">'+p.email+'</td>'+(_paSc==='all'?'<td style="font-size:11px;color:var(--hint)">'+cit(p._en)+' \u00b7 '+fmt(p._en)+'</td>':'')+'<td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td><td><span class="b '+sc+'">'+sl+'</span></td><td style="color:var(--hint);font-size:12px">'+(p.note||'—')+'</td><td style="white-space:nowrap"><button onclick="qualifyLead(event,'+i+')" class="btn-lime" style="font-size:10px;padding:5px 10px">Als Lead</button></td></tr>';
+    }).join(''):'<tr><td colspan="'+paCols+'" style="padding:24px 0;text-align:center;color:var(--hint)">Keine Teilnehmer gefunden</td></tr>')+
     '</tbody></table>';
   updSc();
+}
+var _paFilt=[];
+var _paEid='';
+// Bestehenden Teilnehmer als Lead qualifizieren -> Lead-Modal vorausgefüllt
+function qualifyLead(ev,i){
+  if(ev&&ev.stopPropagation)ev.stopPropagation();
+  var pp=_paFilt[i];
+  if(!pp){alert('Teilnehmer nicht gefunden');return;}
+  var eid=pp._eid||_paEid||'';
+  openLeadModal(null,eid);
+  document.getElementById('lm-ct').value=pp.name||'';
+  document.getElementById('lm-co').value=pp.co||'';
+  document.getElementById('lm-em').value=pp.email||'';
+  document.getElementById('lm-ph').value=pp.phone||'';
+  document.getElementById('lm-st').value='qualified';
+  var evn=EVS.find(function(e){return e.id===eid;});
+  var sub=document.querySelector('#lmodal .mbox-sub');
+  if(sub)sub.textContent='Aus Teilnehmer qualifiziert'+(evn?' \u00b7 '+fmt(evn.name):'')+' \u00b7 wird mit HubSpot Deal verkn\u00fcpft';
 }
 
 // ════════════════════════════════════════════════
@@ -1699,8 +1719,11 @@ rPa = function(){
   }
 
   function _renderTable(rows, showEventCol){
-    var head='<th></th><th>Name</th><th>Unternehmen</th><th>E-Mail</th>'+(showEventCol?'<th>Event</th>':'')+'<th>Erstellt</th>';
+    var head='<th></th><th>Name</th><th>Unternehmen</th><th>E-Mail</th>'+(showEventCol?'<th>Event</th>':'')+'<th>Erstellt</th><th></th>';
     return '<table class="dt"><thead><tr>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+  function _leadBtn(i){
+    return '<td style="white-space:nowrap"><button onclick="qualifyLead(event,'+i+')" class="btn-lime" style="font-size:10px;padding:5px 10px">Als Lead</button></td>';
   }
 
   // ── ALLE EVENTS: direkt aus Segment-Liste 202 laden (ein Call, keine Duplikate) ──
@@ -1741,13 +1764,15 @@ rPa = function(){
           document.getElementById('pa-cnt').innerHTML='<div style="padding:32px;text-align:center;color:var(--hint)">Keine Teilnehmer gefunden</div>';
           return;
         }
-        var rows=filt.map(function(p){
+        _paEid=''; _paFilt=filt;
+        var rows=filt.map(function(p,i){
           return '<tr>'+
             '<td style="width:32px">'+_mkAvatar(p.name)+'</td>'+
             '<td style="font-weight:600">'+p.name+'</td>'+
             '<td style="color:var(--mut)">'+p.co+'</td>'+
             '<td style="color:var(--hint);font-size:12px">'+p.email+'</td>'+
             '<td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td>'+
+            _leadBtn(i)+
             '</tr>';
         }).join('');
         // Keine Event-Spalte bei alle-Events (Liste hat keine Event-Zuordnung)
@@ -1789,13 +1814,15 @@ rPa = function(){
         'Keine Kontaktdaten gefunden.<br><span style="font-size:11px;opacity:.6">'+regs+' Registrierungen in HubSpot erfasst.</span></div>';
       return;
     }
-    var rows=filt.map(function(p){
+    _paEid=eid; _paFilt=filt;
+    var rows=filt.map(function(p,i){
       return '<tr>'+
         '<td style="width:32px">'+_mkAvatar(p.name)+'</td>'+
         '<td style="font-weight:600">'+p.name+'</td>'+
         '<td style="color:var(--mut)">'+p.co+'</td>'+
         '<td style="color:var(--hint);font-size:12px">'+p.email+'</td>'+
         '<td style="color:var(--mut);font-size:12px">'+fds(p.reg)+'</td>'+
+        _leadBtn(i)+
         '</tr>';
     }).join('');
     document.getElementById('pa-cnt').innerHTML=_renderTable(rows,false);
