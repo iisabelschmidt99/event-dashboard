@@ -58,6 +58,15 @@ exports.handler = async function(event) {
       if (event.httpMethod === 'DELETE') return await deleteLead(p.id);
     }
 
+    // Rechnungs-PDF in Supabase Storage hochladen
+    if (resource === 'upload' && event.httpMethod === 'POST') {
+      return await uploadInvoice(JSON.parse(event.body || '{}'));
+    }
+    // Signierte URL für ein gespeichertes PDF
+    if (resource === 'file' && event.httpMethod === 'GET') {
+      return await signedFileUrl(p.path);
+    }
+
     return json(400, { error: `Unbekannte resource/method: ${resource} ${event.httpMethod}` });
   } catch (e) {
     return json(502, { error: e.message });
@@ -92,6 +101,69 @@ function json(status, body) {
     headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
     body: JSON.stringify(body)
   };
+}
+
+// ── Storage: Rechnungs-PDFs ──────────────────────────────────────────────────
+const BUCKET = 'invoices';
+
+async function ensureBucket() {
+  // idempotent: legt den privaten Bucket an, ignoriert "existiert bereits"
+  try {
+    await fetch(`${SB_URL}/storage/v1/bucket`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: BUCKET, name: BUCKET, public: false })
+    });
+  } catch (_) { /* egal */ }
+}
+
+function _slug(s) {
+  return String(s || 'rechnung').replace(/[^\w.\-]+/g, '_').replace(/_+/g, '_').slice(0, 80);
+}
+
+async function uploadInvoice(body) {
+  const base64 = body.base64 || '';
+  if (!base64) return json(400, { error: 'base64 fehlt' });
+  const eventId = String(body.event_id || body.eventId || 'allgemein');
+  const name = _slug(body.filename || 'rechnung.pdf');
+  const path = `${eventId}/${Date.now()}_${name}`;
+  const bin = Buffer.from(base64, 'base64');
+
+  await ensureBucket();
+  const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${encodeURI(path)}`, {
+    method: 'POST',
+    headers: {
+      apikey: SB_KEY,
+      Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': body.contentType || 'application/pdf',
+      'x-upsert': 'true'
+    },
+    body: bin
+  });
+  const txt = await r.text();
+  if (!r.ok) {
+    let d; try { d = JSON.parse(txt); } catch { d = { raw: txt }; }
+    return json(502, { error: 'Storage-Upload fehlgeschlagen: ' + (d.message || d.error || txt) });
+  }
+  return json(201, { path, file_name: name });
+}
+
+async function signedFileUrl(path) {
+  if (!path) return json(400, { error: 'path fehlt' });
+  const r = await fetch(`${SB_URL}/storage/v1/object/sign/${BUCKET}/${encodeURI(path)}`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expiresIn: 3600 })
+  });
+  const txt = await r.text();
+  if (!r.ok) {
+    let d; try { d = JSON.parse(txt); } catch { d = { raw: txt }; }
+    return json(502, { error: 'Signierte URL fehlgeschlagen: ' + (d.message || d.error || txt) });
+  }
+  const d = JSON.parse(txt);
+  // signedURL ist relativ (/object/sign/...) -> mit Storage-Basis-URL ergänzen
+  const url = d.signedURL ? `${SB_URL}/storage/v1${d.signedURL}` : '';
+  return json(200, { url });
 }
 
 async function ensureEvent(eventId, meta = {}) {
@@ -217,7 +289,9 @@ function mapCost(row) {
     cat: row.category,
     s: row.status,
     d: row.cost_date || '',
-    po: row.po_number || ''
+    po: row.po_number || '',
+    file: row.file_path || '',
+    fileName: row.file_name || ''
   };
 }
 
@@ -247,7 +321,9 @@ async function postCost(body) {
       status: body.s || body.status || 'Angebot',
       cost_date: body.d || body.cost_date || null,
       source_note: body.source_note || body.notiz || '',
-      po_number: body.po || body.po_number || null
+      po_number: body.po || body.po_number || null,
+      file_path: body.file || body.file_path || null,
+      file_name: body.fileName || body.file_name || null
     })
   });
   const row = Array.isArray(rows) ? rows[0] : rows;
