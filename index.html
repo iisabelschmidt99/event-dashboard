@@ -46,8 +46,35 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 #app{max-width:1320px;margin:0 auto;padding:28px 28px 64px}
 
 /* ── CARDS ── */
-.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:22px 24px}
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:22px 24px;box-shadow:0 1px 2px rgba(13,17,23,.04);transition:box-shadow .18s ease,transform .18s ease,border-color .18s ease}
+.card:hover{box-shadow:0 6px 20px rgba(13,17,23,.07);border-color:#D4DAD2}
+.card[onclick]{cursor:pointer}
+.card[onclick]:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(13,17,23,.10)}
 .card-ink{background:#0D1117;border-radius:var(--r);border:1px solid rgba(255,255,255,.06);padding:22px 28px}
+
+/* ── POLISH: Tiefe, Hover, Micro-Interactions ── */
+.kl-card{box-shadow:0 1px 2px rgba(13,17,23,.04);transition:box-shadow .18s,transform .18s}
+.kl-card:hover{box-shadow:0 6px 18px rgba(13,17,23,.06);transform:translateY(-1px)}
+.btn{transition:opacity .15s,transform .12s,box-shadow .15s}
+.btn:hover{opacity:.93;box-shadow:0 4px 13px rgba(13,17,23,.18)}
+.btn:active{transform:translateY(1px)}
+.btn-lime{transition:transform .12s,box-shadow .15s,filter .15s}
+.btn-lime:hover{filter:brightness(1.04);box-shadow:0 4px 14px rgba(191,255,0,.4)}
+.btn-lime:active{transform:translateY(1px)}
+.btn-g{transition:all .15s}
+.btn-g:hover{border-color:var(--ink);color:var(--text)}
+.btn-hs{transition:transform .12s,box-shadow .15s}
+.btn-hs:hover{box-shadow:0 4px 12px rgba(255,122,89,.4);transform:translateY(-1px)}
+.fn-c:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(13,17,23,.08);border-color:#D4DAD2}
+.bf{transition:width .6s cubic-bezier(.4,0,.2,1)}
+.cp{transition:transform .12s}
+/* Donut-Charts */
+.viz-row{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+.donut-legend{display:flex;flex-direction:column;gap:9px}
+.donut-li{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--mut)}
+.donut-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.donut-li b{color:var(--text);font-weight:700;margin-left:auto;font-family:var(--fh);font-size:14px}
+.donut-svg circle{transition:stroke-dasharray .6s cubic-bezier(.4,0,.2,1)}
 
 /* ── TYPE ── */
 .pg-h{font-family:var(--fh);font-size:26px;font-weight:800;letter-spacing:.03em;color:var(--text);line-height:1}
@@ -302,6 +329,7 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
       </div>
       <div class="g4r" id="co-kpis"></div>
       <div class="g3r" id="co-cats"></div>
+      <div id="co-viz"></div>
       <div id="co-form" class="add-form">
         <div class="ul mb12">Neue Position</div>
         <div class="g4"><input class="fi" id="cfn" placeholder="Bezeichnung"><input class="fi" id="cfa" type="number" placeholder="Netto &#8364;"><select class="fi" id="cfc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="cfs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div>
@@ -556,6 +584,26 @@ const eROI=id=>{const c=sumC(eC(id)),v=eVal(id);if(!c||!v)return null;return Mat
 function badgeSt(s){const m=STMAP[s]||STMAP.draft;return '<span class="b '+m.cl+'">'+m.l+'</span>';}
 function badgeSg(s){const m=SGM[s];if(!m)return '<span class="b b-dr">'+s+'</span>';return '<span class="b" style="background:'+m.bg+';color:'+m.c+';border-color:'+m.bc+'">'+m.l+'</span>';}
 function bar(v,mx,col,h){h=h||4;const p=mx?Math.min(100,Math.round(v/mx*100)):0;return '<div class="bt" style="height:'+h+'px"><div class="bf" style="width:'+p+'%;background:'+col+'"></div></div>';}
+// SVG-Donut (mehrsegmentig): segs=[{v,c}], optional Mitteltext
+function donutSeg(segs,size,thick,centerTop,centerSub){
+  size=size||128;thick=thick||18;
+  var r=(size-thick)/2,cx=size/2,cy=size/2,circ=2*Math.PI*r;
+  var tot=segs.reduce(function(s,x){return s+(x.v||0);},0);
+  var off=0;
+  var arcs=tot?segs.map(function(x){
+    var len=(x.v||0)/tot*circ;
+    if(len<=0)return '';
+    var el='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+x.c+'" stroke-width="'+thick+'" stroke-linecap="butt" stroke-dasharray="'+len+' '+(circ-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 '+cx+' '+cy+')"/>';
+    off+=len;return el;
+  }).join(''):'';
+  var center='';
+  if(centerTop!=null){
+    center='<text x="'+cx+'" y="'+(centerSub?cy-3:cy-1)+'" text-anchor="middle" dominant-baseline="middle" font-size="'+(size*0.165)+'" font-weight="800" fill="'+(arguments.length>5?arguments[5]:'var(--text)')+'" font-family="Barlow Condensed,sans-serif">'+centerTop+'</text>';
+    if(centerSub)center+='<text x="'+cx+'" y="'+(cy+size*0.16)+'" text-anchor="middle" font-size="'+(size*0.07)+'" fill="var(--hint)" letter-spacing="1.2" font-weight="700">'+centerSub+'</text>';
+  }
+  var track='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--bg)" stroke-width="'+thick+'"/>';
+  return '<svg class="donut-svg" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">'+track+arcs+center+'</svg>';
+}
 function barD(v,mx,col){const p=mx?Math.min(100,Math.round(v/mx*100)):0;return '<div class="bt6"><div class="bf6" style="width:'+p+'%;background:'+col+'"></div></div>';}
 function roi(id){const r=eROI(id);if(r===null)return '<span class="roi-0">\u2014</span>';return '<span class="'+(r>=0?'roi-p':'roi-n')+'">'+(r>=0?'+':'')+r+' %</span>';}
 
@@ -963,6 +1011,19 @@ function rCo(){
     const on=_coCat===k;
     return '<div class="card" onclick="coCatFil(\''+k+'\')" style="cursor:pointer;border-top:3px solid '+m.c+(on?';box-shadow:0 0 0 2px '+m.c+' inset':'')+'"><div style="font-size:12px;font-weight:600;color:'+m.c+';margin-bottom:8px">'+m.l+(on?' \u2715':'')+'</div><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+num(ct)+' \u20ac</div>'+bar(cp,ct||1,m.c)+'<div style="font-size:11px;color:var(--hint);margin-top:5px">'+num(cp)+' \u20ac bezahlt \u00b7 '+cs.length+' Pos.</div></div>';
   }).join('');
+  // Donut: Kostenverteilung nach Kategorie
+  const catTot=Object.keys(CAT).map(k=>({k:k,l:CAT[k].l,c:CAT[k].c,v:all.filter(c=>c.cat===k).reduce((s,c)=>s+c.a,0)}));
+  const vizEl=document.getElementById('co-viz');
+  if(tot>0){
+    vizEl.style.display='';vizEl.className='card mb16';vizEl.style.marginBottom='16px';
+    vizEl.innerHTML='<div class="ul" style="margin-bottom:14px">Kostenverteilung nach Kategorie</div><div class="viz-row">'+
+      donutSeg(catTot.map(x=>({v:x.v,c:x.c})),132,20,num(tot),'GESAMT €')+
+      '<div class="donut-legend">'+catTot.map(x=>{
+        const pct=tot?Math.round(x.v/tot*100):0;
+        return '<div class="donut-li"><span class="donut-dot" style="background:'+x.c+'"></span><span>'+x.l+'</span><b>'+num(x.v)+' € · '+pct+'%</b></div>';
+      }).join('')+'</div>'+
+    '</div>';
+  } else { vizEl.style.display='none'; vizEl.innerHTML=''; }
   const fil=_coCat==='all'?all:all.filter(c=>c.cat===_coCat);
   const srt=[...fil].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0));
   const cols=_coSc==='all'?8:7;
@@ -1502,8 +1563,13 @@ function rBudget(){
       {l:(over?'Überschreitung':'Verbleibend'),v:!budget?'—':((rem<0?'-':'')+num(Math.abs(rem))+' €'),c:!budget?'var(--text)':(rem<0?RED:GREEN)}
     ].map(function(k){return '<div><div style="font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hint);margin-bottom:4px">'+k.l+'</div><div style="font-size:18px;font-weight:700;color:'+k.c+'">'+k.v+'</div></div>';}).join('')+
     '</div>'+
-    bar(spent,budget||1,barCol,6)+
-    '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px"><span style="color:var(--hint)">'+(budget?(spendPct+'% des Budgets ausgegeben'):'Kein Budget gesetzt')+'</span>'+(over?'<span style="color:'+RED+';font-weight:700">Budget um '+num(spent-budget)+' € überschritten</span>':'')+'</div>';
+    '<div class="viz-row" style="margin-top:6px">'+
+      donutSeg([{v:spent,c:barCol},{v:Math.max(0,budget-spent),c:'#E7EBE6'}],118,18,(budget?spendPct+'%':'—'),'AUSGEGEBEN',(over?RED:'var(--text)'))+
+      '<div>'+
+        bar(spent,budget||1,barCol,8)+
+        '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px"><span style="color:var(--hint)">'+(budget?(spendPct+'% des Budgets ausgegeben'):'Kein Budget gesetzt')+'</span>'+(over?'<span style="color:'+RED+';font-weight:700">Budget um '+num(spent-budget)+' € überschritten</span>':'')+'</div>'+
+      '</div>'+
+    '</div>';
 
   // Table rows
   var tbody = document.getElementById('bud-tbody');
