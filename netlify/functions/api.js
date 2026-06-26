@@ -216,7 +216,8 @@ function mapCost(row) {
     a: parseFloat(row.amount) || 0,
     cat: row.category,
     s: row.status,
-    d: row.cost_date || ''
+    d: row.cost_date || '',
+    po: row.po_number || ''
   };
 }
 
@@ -245,7 +246,8 @@ async function postCost(body) {
       category: body.cat || body.category || 'location',
       status: body.s || body.status || 'Angebot',
       cost_date: body.d || body.cost_date || null,
-      source_note: body.source_note || body.notiz || ''
+      source_note: body.source_note || body.notiz || '',
+      po_number: body.po || body.po_number || null
     })
   });
   const row = Array.isArray(rows) ? rows[0] : rows;
@@ -261,7 +263,8 @@ async function putCost(body) {
       amount: body.a != null ? parseFloat(body.a) : body.amount,
       category: body.cat || body.category,
       status: body.s || body.status,
-      cost_date: body.d || body.cost_date
+      cost_date: body.d || body.cost_date,
+      po_number: body.po != null ? body.po : body.po_number
     })
   });
   const row = Array.isArray(rows) ? rows[0] : rows;

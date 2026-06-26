@@ -183,6 +183,12 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 .card-ink .ki .kv{color:#fff}
 #lmodal{position:fixed;inset:0;background:rgba(13,17,23,.55);z-index:1000;display:none;align-items:center;justify-content:center}
 #lmodal.on{display:flex}
+#smodal{position:fixed;inset:0;background:rgba(13,17,23,.55);z-index:1000;display:none;align-items:center;justify-content:center}
+#smodal.on{display:flex}
+.mbox-wide{width:680px}
+.split-row{display:grid;grid-template-columns:2fr 1fr 1.3fr 1.3fr 28px;gap:7px;margin-bottom:7px;align-items:center}
+.split-row .fi{padding:7px 9px;font-size:12px}
+.split-x{background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;padding:0}
 
 /* ── FORM ── */
 .fi{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text);outline:none;background:var(--card);font-family:var(--fb)}
@@ -298,11 +304,11 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
       <div class="g3r" id="co-cats"></div>
       <div id="co-form" class="add-form">
         <div class="ul mb12">Neue Position</div>
-        <div class="g4"><input class="fi" id="cfn" placeholder="Bezeichnung"><input class="fi" id="cfa" type="number" placeholder="Betrag &#8364;"><select class="fi" id="cfc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="cfs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div>
-        <div class="g2"><select class="fi" id="cfev"><option value="">&#8212; Event &#8212;</option></select><input class="fi" id="cfd" type="date"></div>
+        <div class="g4"><input class="fi" id="cfn" placeholder="Bezeichnung"><input class="fi" id="cfa" type="number" placeholder="Netto &#8364;"><select class="fi" id="cfc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="cfs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div>
+        <div class="g3"><select class="fi" id="cfev"><option value="">&#8212; Event &#8212;</option></select><select class="fi" id="cfpo"><option value="">&#8212; PO-Nummer (optional) &#8212;</option></select><input class="fi" id="cfd" type="date"></div>
         <div class="fg"><button class="btn" onclick="subCo()">Hinzuf&#252;gen</button><button class="btn-g" onclick="togF('co-form')">Abbrechen</button></div>
       </div>
-      <div class="card"><table class="dt"><thead><tr><th>Datum</th><th>Position</th><th id="co-th-ev">Event</th><th>Kategorie</th><th>Betrag</th><th>Status</th><th></th></tr></thead><tbody id="co-tbody"></tbody></table></div>
+      <div class="card"><table class="dt"><thead><tr><th>Datum</th><th>Position</th><th id="co-th-ev">Event</th><th>Kategorie</th><th>PO-Nr.</th><th>Netto</th><th>Status</th><th></th></tr></thead><tbody id="co-tbody"></tbody></table></div>
     </div>
 
     <!-- ── BUDGETPLANUNG ── -->
@@ -454,6 +460,21 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
   </div>
 </div>
 
+<!-- SPLIT MODAL -->
+<div id="smodal" onclick="if(event.target===this)closeSplit()">
+  <div class="mbox mbox-wide">
+    <div class="mbox-title">Rechnung aufteilen</div>
+    <div class="mbox-sub" id="sp-sub">Position auf mehrere PO-Nummern / Kategorien aufteilen</div>
+    <div class="split-row" style="margin-top:14px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)">
+      <div>Bezeichnung</div><div>Netto &#8364;</div><div>Kategorie</div><div>PO-Nummer</div><div></div>
+    </div>
+    <div id="sp-rows"></div>
+    <button class="btn-g" onclick="splitAddRow()" style="font-size:12px;padding:6px 12px;margin-top:4px">+ Zeile</button>
+    <div id="sp-status" style="margin-top:14px;font-size:13px;display:flex;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:8px"></div>
+    <div style="display:flex;gap:10px;margin-top:16px"><button class="btn-g" onclick="closeSplit()">Abbrechen</button><button class="btn" id="sp-save" style="flex:2" onclick="splitSave()">Aufteilen &amp; speichern</button></div>
+  </div>
+</div>
+
 <!-- CAL POPUP -->
 <div id="pop"><div class="pop-h" id="pop-h"></div><div id="pop-b"></div></div>
 
@@ -520,6 +541,7 @@ const fds=function(iso){
   return isNaN(d.getTime())?'—':d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'});
 };
 const num=n=>(n||0).toLocaleString('de-DE');
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const gid=()=>'x'+Date.now()+Math.random().toString(36).slice(2,5);
 const gpo=()=>new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900)+100).padStart(3,'0');
 const eC=id=>_C[id]||[];
@@ -943,12 +965,100 @@ function rCo(){
   }).join('');
   const fil=_coCat==='all'?all:all.filter(c=>c.cat===_coCat);
   const srt=[...fil].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0));
-  const cols=_coSc==='all'?7:6;
-  document.getElementById('co-tbody').innerHTML=srt.length?srt.map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td>'+(_coSc==='all'?'<td style="font-size:12px;color:var(--hint)">'+cit(c._en)+' \u00b7 '+fmt(c._en)+'</td>':'')+'<td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td>'+'<td><button onclick="delCo(\''+c.id+'\',\''+c._eid+'\')" title="L\u00f6schen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;padding:0 4px">\u00d7</button></td></tr>').join(''):'<tr><td colspan="'+cols+'" style="padding:32px 0;text-align:center;color:var(--hint);font-size:13px">Keine Kostenpositionen erfasst<br><span style="font-size:11px;opacity:.6">Positionen über + Position hinzufügen eintragen</span></td></tr>';
+  const cols=_coSc==='all'?8:7;
+  document.getElementById('co-tbody').innerHTML=srt.length?srt.map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td>'+(_coSc==='all'?'<td style="font-size:12px;color:var(--hint)">'+cit(c._en)+' \u00b7 '+fmt(c._en)+'</td>':'')+'<td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-size:12px;color:'+(c.po?'var(--text)':'var(--hint)')+'">'+(c.po?esc(c.po):'\u2014')+'</td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td>'+'<td style="white-space:nowrap"><button onclick="splitCo(\''+c.id+'\',\''+c._eid+'\')" title="Rechnung aufteilen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:11px;padding:0 6px;text-decoration:underline">teilen</button><button onclick="delCo(\''+c.id+'\',\''+c._eid+'\')" title="L\u00f6schen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;padding:0 4px">\u00d7</button></td></tr>').join(''):'<tr><td colspan="'+cols+'" style="padding:32px 0;text-align:center;color:var(--hint);font-size:13px">'+(_coCat==='all'?'Keine Kostenpositionen erfasst<br><span style="font-size:11px;opacity:.6">Positionen über + Position hinzufügen eintragen</span>':'Keine Positionen in dieser Kategorie')+'</td></tr>';
   updSc();
 }
 function togF(id){document.getElementById(id).classList.toggle('on');}
 function coCatFil(k){_coCat=(_coCat===k?'all':k);rCo();}
+
+// ── Rechnung aufteilen ──────────────────────────────────────────────
+var _splitCtx=null;
+function catOptions(sel){
+  return Object.keys(CAT).map(function(k){
+    return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+esc(CAT[k].l)+'</option>';
+  }).join('');
+}
+function splitRowHtml(name,amount,cat,po){
+  return '<div class="split-row">'+
+    '<input class="fi sp-n" placeholder="Bezeichnung" value="'+esc(name||'')+'">'+
+    '<input class="fi sp-a" type="number" step="0.01" placeholder="0" oninput="splitRecalc()" value="'+(amount!=null?esc(amount):'')+'">'+
+    '<select class="fi sp-c">'+catOptions(cat||'location')+'</select>'+
+    '<select class="fi sp-p">'+poOptions(po||'')+'</select>'+
+    '<button class="split-x" title="Zeile entfernen" onclick="this.closest(\'.split-row\').remove();splitRecalc()">×</button>'+
+  '</div>';
+}
+function splitCo(id,eid){
+  var c=(_C[eid]||[]).find(function(x){return String(x.id)===String(id);});
+  if(!c){alert('Position nicht gefunden');return;}
+  _splitCtx={id:id,eid:eid,total:c.a,s:c.s,d:c.d,name:c.n,cat:c.cat,po:c.po};
+  var ev=EVS.find(function(e){return e.id===eid;});
+  document.getElementById('sp-sub').textContent='„'+c.n+'" · '+num(c.a)+' € netto'+(ev?' · '+fmt(ev.name):'');
+  // Startzeilen: Originalbetrag in Zeile 1, zweite Zeile leer
+  document.getElementById('sp-rows').innerHTML=
+    splitRowHtml(c.n,c.a,c.cat,c.po)+splitRowHtml('',null,c.cat,'');
+  splitRecalc();
+  document.getElementById('smodal').classList.add('on');
+}
+function splitAddRow(){
+  document.getElementById('sp-rows').insertAdjacentHTML('beforeend',splitRowHtml('',null,_splitCtx?_splitCtx.cat:'location',''));
+  splitRecalc();
+}
+function closeSplit(){document.getElementById('smodal').classList.remove('on');_splitCtx=null;}
+function splitRecalc(){
+  if(!_splitCtx)return 0;
+  var sum=0;
+  document.querySelectorAll('#sp-rows .sp-a').forEach(function(i){sum+=parseFloat(i.value)||0;});
+  var diff=Math.round((_splitCtx.total-sum)*100)/100;
+  var ok=Math.abs(diff)<0.01;
+  var el=document.getElementById('sp-status');
+  el.innerHTML='<span style="color:var(--mut)">Summe: <b style="color:var(--text)">'+num(Math.round(sum*100)/100)+' €</b> von '+num(_splitCtx.total)+' €</span>'+
+    '<span style="font-weight:700;color:'+(ok?'#059669':'#EF4444')+'">'+(ok?'passt':(diff>0?'noch '+num(diff)+' € offen':num(-diff)+' € zu viel'))+'</span>';
+  var btn=document.getElementById('sp-save');
+  btn.disabled=!ok;btn.style.opacity=ok?'1':'.5';btn.style.cursor=ok?'pointer':'not-allowed';
+  return sum;
+}
+async function splitSave(){
+  if(!_splitCtx)return;
+  var ctx=_splitCtx;
+  var rows=[];
+  var bad=false;
+  document.querySelectorAll('#sp-rows .split-row').forEach(function(r){
+    var n=r.querySelector('.sp-n').value.trim();
+    var a=parseFloat(r.querySelector('.sp-a').value)||0;
+    var cat=r.querySelector('.sp-c').value;
+    var po=r.querySelector('.sp-p').value;
+    if(a<=0)return; // leere Zeilen überspringen
+    if(!n){bad=true;}
+    rows.push({n:n,a:a,cat:cat,po:po});
+  });
+  if(bad){alert('Bitte jede Zeile mit Betrag braucht eine Bezeichnung.');return;}
+  if(rows.length<2){alert('Mindestens 2 Positionen zum Aufteilen angeben.');return;}
+  var sum=rows.reduce(function(s,r){return s+r.a;},0);
+  if(Math.abs(ctx.total-sum)>=0.01){alert('Die Summe muss dem Originalbetrag entsprechen.');return;}
+  var btn=document.getElementById('sp-save');btn.disabled=true;btn.textContent='Speichern…';
+  try{
+    // Neue Positionen anlegen
+    var created=[];
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i];
+      var c=await apiFetch('POST','costs',{},{event_id:ctx.eid,n:r.n,a:r.a,cat:r.cat,s:ctx.s,d:ctx.d||null,po:r.po||null,source_note:'Split von: '+ctx.name,event:_eventMeta(ctx.eid)});
+      created.push(c);
+    }
+    // Original löschen
+    await apiFetch('DELETE','costs',{id:ctx.id});
+    if(_C[ctx.eid]){
+      _C[ctx.eid]=_C[ctx.eid].filter(function(x){return String(x.id)!==String(ctx.id);});
+      created.forEach(function(c){_C[ctx.eid].push(c);});
+    }
+    closeSplit();
+    rCo();rOv();rBudget();
+    if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
+  }catch(e){
+    alert('Fehler beim Aufteilen: '+e.message);
+    btn.disabled=false;btn.textContent='Aufteilen & speichern';
+  }
+}
 function delCo(id,eid){
   if(!confirm('Diese Position wirklich löschen?'))return;
   apiFetch('DELETE','costs',{id:id})
@@ -960,15 +1070,15 @@ function delCo(id,eid){
     .catch(function(e){alert('Fehler beim Löschen: '+e.message);});
 }
 function subCo(){
-  const n=document.getElementById('cfn').value.trim(),a=parseFloat(document.getElementById('cfa').value),cat=document.getElementById('cfc').value,s=document.getElementById('cfs').value,eid=document.getElementById('cfev').value,d=document.getElementById('cfd').value;
+  const n=document.getElementById('cfn').value.trim(),a=parseFloat(document.getElementById('cfa').value),cat=document.getElementById('cfc').value,s=document.getElementById('cfs').value,eid=document.getElementById('cfev').value,d=document.getElementById('cfd').value,po=document.getElementById('cfpo').value;
   if(!n){alert('Bitte eine Bezeichnung eingeben.');return;}
-  if(!a||isNaN(a)){alert('Bitte einen gültigen Betrag eingeben.');return;}
+  if(!a||isNaN(a)){alert('Bitte einen gültigen Netto-Betrag eingeben.');return;}
   if(!eid){alert('Bitte ein Event auswählen.');return;}
-  apiFetch('POST','costs',{},{event_id:eid,n:n,a:a,cat:cat,s:s,d:d||null,event:_eventMeta(eid)})
+  apiFetch('POST','costs',{},{event_id:eid,n:n,a:a,cat:cat,s:s,d:d||null,po:po||null,event:_eventMeta(eid)})
     .then(function(created){
       if(!_C[eid])_C[eid]=[];
       _C[eid].push(created);
-      document.getElementById('cfn').value='';document.getElementById('cfa').value='';
+      document.getElementById('cfn').value='';document.getElementById('cfa').value='';document.getElementById('cfpo').value='';
       rCo();rOv();rBudget();
       if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
     })
@@ -998,7 +1108,7 @@ async function analyzeCostPdfWithClaude(base64,filename,eid){
         model:'claude-opus-4-6',max_tokens:512,
         messages:[{role:'user',content:[
           {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-          {type:'text',text:'Lies diese Rechnung und extrahiere: Lieferant/Firma, Gesamtbetrag in Euro (Zahl, brutto), Kategorie (nur "location"/"catering"/"marketing"), kurze Beschreibung (max 5 Wörter), Status (nur "Angebot"/"beauftragt"/"bezahlt"). Antworte NUR mit JSON: {"anbieter":"","betrag":0,"kategorie":"catering","beschreibung":"","status":"bezahlt"}'}
+          {type:'text',text:'Lies diese Rechnung und extrahiere: Lieferant/Firma, Nettobetrag in Euro (Zahl, OHNE MwSt), Kategorie (nur "location"/"catering"/"marketing"), kurze Beschreibung (max 5 Wörter), Status (nur "Angebot"/"beauftragt"/"bezahlt"), PO-Nummer falls vorhanden (sonst leer). Antworte NUR mit JSON: {"anbieter":"","betrag":0,"kategorie":"catering","beschreibung":"","status":"bezahlt","ponummer":""}'}
         ]}]
       })
     });
@@ -1016,6 +1126,7 @@ async function analyzeCostPdfWithClaude(base64,filename,eid){
       cat:kat,
       s:status,
       d:new Date().toISOString().slice(0,10),
+      po:(p.ponummer||'').trim()||null,
       source_note:'PDF: '+filename,
       event:_eventMeta(eid)
     });
@@ -1023,7 +1134,8 @@ async function analyzeCostPdfWithClaude(base64,filename,eid){
     _C[eid].push(created);
     rCo();rOv();rBudget();
     if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
-    alert('\u2728 Rechnung gespeichert: '+p.anbieter+' \u2013 '+p.betrag+' \u20ac');
+    var _ev=EVS.find(function(e){return e.id===eid;});
+    alert('Rechnung gespeichert: '+p.anbieter+' \u2013 '+num(parseFloat(p.betrag)||0)+' \u20ac netto'+(_ev?'\nEvent: '+fmt(_ev.name):''));
   }catch(err){
     alert('Fehler: '+err.message+'\n\nPr\xfcfe ANTHROPIC_API_KEY und SUPABASE-Keys in Netlify.');
   }finally{
@@ -1466,7 +1578,7 @@ async function analyzePdfWithClaude(base64,filename){
     if(!_BUDGET_ITEMS[eid]) _BUDGET_ITEMS[eid]=[];
     _BUDGET_ITEMS[eid].push(created);
     rBudget();
-    alert('✨ Angebot ausgelesen: '+p.anbieter+' – '+p.betrag+' €');
+    alert('Angebot ausgelesen: '+p.anbieter+' – '+p.betrag+' €');
   }catch(err){
     alert('Fehler: '+err.message+'\n\nANTHROPIC_API_KEY in Netlify gesetzt?');
   }finally{
@@ -1484,6 +1596,28 @@ async function analyzePdfWithClaude(base64,filename){
 const _HS = '/.netlify/functions/hubspot';
 const _PA_CACHE = {};
 var _listCount = 0;
+var _POS = [];   // PO-Nummern aus HubSpot Deals
+
+// PO-Nummern aus HubSpot laden (Deal-Property "ponummer")
+async function hsLoadPOs(){
+  try{
+    var r = await fetch(_HS+'?action=deals');
+    if(!r.ok) return;
+    var d = await r.json();
+    _POS = d.results || [];
+    fillPoSelects();
+  }catch(e){ console.warn('hsLoadPOs:', e.message); }
+}
+function poOptions(selected){
+  return '<option value="">— PO-Nummer (optional) —</option>'+_POS.map(function(o){
+    var sel = (selected!=null && String(selected)===String(o.po)) ? ' selected' : '';
+    return '<option value="'+esc(o.po)+'"'+sel+'>'+esc(o.po)+(o.deal?' · '+esc(o.deal):'')+'</option>';
+  }).join('');
+}
+function fillPoSelects(){
+  var sel = document.getElementById('cfpo');
+  if(sel){ var cur=sel.value; sel.innerHTML=poOptions(cur); }
+}
 
 function _hsMapStatus(s){
   return({SCHEDULED:'upcoming',COMPLETED:'completed',CANCELLED:'cancelled',DRAFT:'draft'}[(s||'').toUpperCase()]||'draft');
@@ -1520,6 +1654,7 @@ async function hsLoadEvents(){
     if(s) s.textContent = 'Netzwerkmarketing · '+EVS.length+' Events aus HubSpot';
     apiFetch('POST','events',{},{events:EVS}).catch(function(e){console.warn('syncEvents:',e.message);});
     apiLoadFinancials();
+    hsLoadPOs();
   }catch(e){ console.warn('hsLoadEvents:', e.message); }
 }
 

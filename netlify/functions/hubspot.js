@@ -53,6 +53,38 @@ exports.handler = async function(event) {
       return res(200, { results: normalized, total: normalized.length });
     }
 
+    // ── deals: PO-Nummern aus HubSpot Deals (Property "ponummer") ──────────────
+    // GET /crm/v3/objects/deals?properties=dealname,ponummer,amount
+    if (p.action === 'deals') {
+      const props = 'dealname,ponummer,amount';
+      let url = `${BASE}/crm/v3/objects/deals?limit=100&properties=${props}&archived=false`;
+      const out = [];
+      let guard = 0;
+      while (url && guard < 10) {
+        const r = await fetch(url, { headers: h });
+        const body = await r.text();
+        if (!r.ok) return res(r.status, { _error: tryParse(body) });
+        const data = tryParse(body);
+        (data.results || []).forEach(d => {
+          const po = (d.properties && d.properties.ponummer || '').trim();
+          if (!po) return; // nur Deals mit PO-Nummer
+          out.push({
+            id:   String(d.id),
+            po:   po,
+            deal: (d.properties && d.properties.dealname || '').trim(),
+            amount: parseFloat(d.properties && d.properties.amount || 0) || 0
+          });
+        });
+        const after = data.paging && data.paging.next && data.paging.next.after;
+        url = after ? `${BASE}/crm/v3/objects/deals?limit=100&properties=${props}&archived=false&after=${after}` : null;
+        guard++;
+      }
+      // Dedupe nach PO-Nummer (erste Vorkommnis behalten)
+      const seen = {};
+      const dedup = out.filter(o => seen[o.po] ? false : (seen[o.po] = true));
+      return res(200, { results: dedup, total: dedup.length });
+    }
+
     // ── list_all: alle Kontakte aus Segment-Liste 202 (für "Alle Events" Ansicht) ──
     if (p.action === 'list_all') {
       const r = await fetch(
