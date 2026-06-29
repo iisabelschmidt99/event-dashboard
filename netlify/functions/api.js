@@ -219,7 +219,9 @@ function mapBudgetItem(row) {
     bezeichnung: row.label,
     kategorie: row.category,
     betrag: parseFloat(row.amount) || 0,
-    notiz: row.note || ''
+    notiz: row.note || '',
+    file: row.file_path || '',
+    fileName: row.file_name || ''
   };
 }
 
@@ -268,7 +270,9 @@ async function postBudgetItem(body) {
       label: body.bezeichnung || body.label || '',
       category: body.kategorie || body.category || 'location',
       amount: parseFloat(body.betrag ?? body.amount ?? 0) || 0,
-      note: body.notiz || body.note || ''
+      note: body.notiz || body.note || '',
+      file_path: body.file || body.file_path || null,
+      file_name: body.fileName || body.file_name || null
     })
   });
   const row = Array.isArray(rows) ? rows[0] : rows;

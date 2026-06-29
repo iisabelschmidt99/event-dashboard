@@ -132,7 +132,7 @@ exports.handler = async function (event) {
 
   const payload = {
     to:        FINANCE_TO,
-    subject:   SUBJECT,
+    subject:   body.subject || SUBJECT,
     filename:  body.filename || 'rechnung.pdf',
     contentBytes,          // base64 des PDFs (serverseitig geholt)
     fileUrl,               // signierter Download-Link (für HTTP-GET-Anhang, Plan B)

@@ -1138,6 +1138,25 @@ async function sendFinanceMail(meta){
     return {ok:false,msg:'E-Mail-Versand fehlgeschlagen: '+(nd.error||'unbekannt')};
   }catch(me){ return {ok:false,msg:'E-Mail-Versand fehlgeschlagen: '+me.message}; }
 }
+// Angebot-PDF (Budgetposition) anzeigen
+function openBudgetPdf(id,eid){
+  var it=(_BUDGET_ITEMS[eid]||[]).find(function(x){return String(x.id)===String(id);});
+  if(!it||!it.file){alert('Kein PDF hinterlegt');return;}
+  apiFetch('GET','file',{path:it.file})
+    .then(function(d){ if(d.url) window.open(d.url,'_blank'); else alert('PDF nicht verfügbar'); })
+    .catch(function(e){ alert('PDF-Link Fehler: '+e.message); });
+}
+// Angebot (Budgetposition mit PDF) an Finance senden – Betreff „Angebot"
+async function sendBudgetMailFor(id,eid){
+  var it=(_BUDGET_ITEMS[eid]||[]).find(function(x){return String(x.id)===String(id);});
+  if(!it){alert('Position nicht gefunden');return;}
+  if(!it.file){alert('Für diese Position ist kein PDF hinterlegt.');return;}
+  if(!confirm('Angebot „'+it.bezeichnung+'" an finance@fenyx-office.com senden?'))return;
+  var ev=EVS.find(function(e){return e.id===eid;});
+  var meta={subject:'Angebot',filename:it.fileName||'angebot.pdf',path:it.file,anbieter:it.bezeichnung,betrag:it.betrag,kategorie:it.kategorie,status:'Angebot',po:'',event:ev?fmt(ev.name):'',eventId:eid};
+  var mr=await sendFinanceMail(meta);
+  alert(mr.msg);
+}
 // Rechnung einer bestehenden Position (mit PDF) an Finance senden – Server holt das PDF aus dem Storage
 async function sendInvoiceMailFor(id,eid){
   var c=(_C[eid]||[]).find(function(x){return String(x.id)===String(id);});
@@ -1636,7 +1655,11 @@ function rBudget(){
       '<td><span class="cp cp-'+item.kategorie+'">'+catMap[item.kategorie]+'</span></td>'+
       '<td style="font-weight:700">'+num(item.betrag)+' €</td>'+
       '<td style="color:var(--hint);font-size:12px">'+(item.notiz||'—')+'</td>'+
-      '<td><button onclick="delBudgetRow(\''+eid+'\',\''+item.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:14px;padding:0 4px">\xd7</button></td>'+
+      '<td style="white-space:nowrap">'+
+        (item.file?'<button onclick="openBudgetPdf(\''+item.id+'\',\''+eid+'\')" title="Angebot anzeigen" style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:11px;padding:0 6px;text-decoration:underline">PDF</button>'+
+                   '<button onclick="sendBudgetMailFor(\''+item.id+'\',\''+eid+'\')" title="An Finance senden" style="background:none;border:none;cursor:pointer;color:#059669;font-size:11px;padding:0 6px;text-decoration:underline">Finance</button>':'')+
+        '<button onclick="delBudgetRow(\''+eid+'\',\''+item.id+'\')" title="Löschen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:14px;padding:0 4px">\xd7</button>'+
+      '</td>'+
       '</tr>';
   }).join('');
 }
@@ -1671,7 +1694,7 @@ function delBudgetRow(eid,id){
 function handleBudgetPdf(input){
   var file=input.files[0];
   if(!file) return;
-  if(file.size>10*1024*1024){alert('Datei zu gro\xdf (max. 10 MB)');return;}
+  if(file.size>4*1024*1024){alert('Datei zu gro\xdf (max. 4 MB) – gr\xf6\xdfere PDFs sprengen das Server-Limit.');return;}
   var reader=new FileReader();
   reader.onload=function(e){
     var b64=e.target.result.split(',')[1];
@@ -1702,17 +1725,25 @@ async function analyzePdfWithClaude(base64,filename){
     // Direkt als Budget-Zeile hinzufügen
     var eid=document.getElementById('bud-ev').value||(EVS[0]&&EVS[0].id);
     if(!eid){alert('Bitte Event ausw\xe4hlen');return;}
+    // Angebot-PDF in Storage ablegen
+    var filePath='', fileName='';
+    try{
+      var up=await apiFetch('POST','upload',{},{event_id:eid,filename:filename,base64:base64});
+      filePath=up.path||''; fileName=up.file_name||filename;
+    }catch(ue){ console.warn('PDF-Upload:',ue.message); }
     var created = await apiFetch('POST','budget_items',{},{event_id:eid,
       bezeichnung:(p.beschreibung||p.anbieter)+' ('+p.anbieter+')',
       kategorie:p.kategorie||'location',
       betrag:parseFloat(p.betrag)||0,
       notiz:'PDF: '+filename,
+      file:filePath||null,
+      fileName:fileName||null,
       event:_eventMeta(eid)
     });
     if(!_BUDGET_ITEMS[eid]) _BUDGET_ITEMS[eid]=[];
     _BUDGET_ITEMS[eid].push(created);
     rBudget();
-    alert('Angebot ausgelesen: '+p.anbieter+' – '+p.betrag+' €');
+    alert('Angebot ausgelesen: '+p.anbieter+' – '+num(parseFloat(p.betrag)||0)+' €');
   }catch(err){
     alert('Fehler: '+err.message+'\n\nANTHROPIC_API_KEY in Netlify gesetzt?');
   }finally{
