@@ -23,9 +23,21 @@ function res(status, body) {
 
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: CORS, body: '' };
-  if (event.httpMethod !== 'POST') return res(405, { error: 'Method Not Allowed' });
 
   const hook = (process.env.POWER_AUTOMATE_URL || '').trim();
+
+  // Diagnose: GET zeigt, ob die Webhook-URL beim Function-Deploy ankommt
+  // (ohne die URL selbst preiszugeben). Aufruf: /.netlify/functions/notify
+  if (event.httpMethod === 'GET') {
+    return res(200, {
+      configured: !!hook,
+      hint: hook
+        ? 'POWER_AUTOMATE_URL ist gesetzt.'
+        : 'POWER_AUTOMATE_URL ist NICHT gesetzt. In Netlify eintragen UND neu deployen.'
+    });
+  }
+
+  if (event.httpMethod !== 'POST') return res(405, { error: 'Method Not Allowed' });
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return res(400, { error: 'Ungültiger Body' }); }

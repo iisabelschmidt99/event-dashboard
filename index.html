@@ -1027,7 +1027,7 @@ function rCo(){
   const fil=_coCat==='all'?all:all.filter(c=>c.cat===_coCat);
   const srt=[...fil].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0));
   const cols=_coSc==='all'?8:7;
-  document.getElementById('co-tbody').innerHTML=srt.length?srt.map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td>'+(_coSc==='all'?'<td style="font-size:12px;color:var(--hint)">'+cit(c._en)+' \u00b7 '+fmt(c._en)+'</td>':'')+'<td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-size:12px;color:'+(c.po?'var(--text)':'var(--hint)')+'">'+(c.po?esc(c.po):'\u2014')+'</td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td>'+'<td style="white-space:nowrap">'+(c.file?'<button onclick="openInvoiceFor(\''+c.id+'\',\''+c._eid+'\')" title="Rechnung anzeigen" style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:11px;padding:0 6px;text-decoration:underline">PDF</button>':'')+'<button onclick="splitCo(\''+c.id+'\',\''+c._eid+'\')" title="Rechnung aufteilen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:11px;padding:0 6px;text-decoration:underline">teilen</button><button onclick="delCo(\''+c.id+'\',\''+c._eid+'\')" title="L\u00f6schen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;padding:0 4px">\u00d7</button></td></tr>').join(''):'<tr><td colspan="'+cols+'" style="padding:32px 0;text-align:center;color:var(--hint);font-size:13px">'+(_coCat==='all'?'Keine Kostenpositionen erfasst<br><span style="font-size:11px;opacity:.6">Positionen über + Position hinzufügen eintragen</span>':'Keine Positionen in dieser Kategorie')+'</td></tr>';
+  document.getElementById('co-tbody').innerHTML=srt.length?srt.map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td>'+(_coSc==='all'?'<td style="font-size:12px;color:var(--hint)">'+cit(c._en)+' \u00b7 '+fmt(c._en)+'</td>':'')+'<td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-size:12px;color:'+(c.po?'var(--text)':'var(--hint)')+'">'+(c.po?esc(c.po):'\u2014')+'</td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td>'+'<td style="white-space:nowrap">'+(c.file?'<button onclick="openInvoiceFor(\''+c.id+'\',\''+c._eid+'\')" title="Rechnung anzeigen" style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:11px;padding:0 6px;text-decoration:underline">PDF</button><button onclick="sendInvoiceMailFor(\''+c.id+'\',\''+c._eid+'\')" title="An Finance senden" style="background:none;border:none;cursor:pointer;color:#059669;font-size:11px;padding:0 6px;text-decoration:underline">Finance</button>':'')+'<button onclick="splitCo(\''+c.id+'\',\''+c._eid+'\')" title="Rechnung aufteilen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:11px;padding:0 6px;text-decoration:underline">teilen</button><button onclick="delCo(\''+c.id+'\',\''+c._eid+'\')" title="L\u00f6schen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;padding:0 4px">\u00d7</button></td></tr>').join(''):'<tr><td colspan="'+cols+'" style="padding:32px 0;text-align:center;color:var(--hint);font-size:13px">'+(_coCat==='all'?'Keine Kostenpositionen erfasst<br><span style="font-size:11px;opacity:.6">Positionen über + Position hinzufügen eintragen</span>':'Keine Positionen in dieser Kategorie')+'</td></tr>';
   updSc();
 }
 function togF(id){document.getElementById(id).classList.toggle('on');}
@@ -1127,6 +1127,42 @@ function openInvoiceFor(id,eid){
     .then(function(d){ if(d.url) window.open(d.url,'_blank'); else alert('PDF nicht verfügbar'); })
     .catch(function(e){ alert('PDF-Link Fehler: '+e.message); });
 }
+// Finance-Mail senden (gemeinsamer Helper)
+async function sendFinanceMail(meta,base64){
+  try{
+    var nr=await fetch('/.netlify/functions/notify',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(Object.assign({base64:base64},meta))});
+    var nd=await nr.json().catch(function(){return{};});
+    if(nd.ok) return {ok:true,msg:'E-Mail an Finance gesendet.'};
+    if(nd.prepared) return {ok:false,msg:'E-Mail noch nicht aktiv: POWER_AUTOMATE_URL in Netlify setzen UND neu deployen.'};
+    return {ok:false,msg:'E-Mail-Versand fehlgeschlagen: '+(nd.error||'unbekannt')};
+  }catch(me){ return {ok:false,msg:'E-Mail-Versand fehlgeschlagen: '+me.message}; }
+}
+function blobToBase64(blob){
+  return new Promise(function(resolve,reject){
+    var r=new FileReader();
+    r.onload=function(){ resolve(String(r.result).split(',')[1]||''); };
+    r.onerror=reject; r.readAsDataURL(blob);
+  });
+}
+// Rechnung einer bestehenden Position (mit PDF) an Finance senden
+async function sendInvoiceMailFor(id,eid){
+  var c=(_C[eid]||[]).find(function(x){return String(x.id)===String(id);});
+  if(!c){alert('Position nicht gefunden');return;}
+  if(!c.file){alert('Für diese Position ist kein PDF hinterlegt.');return;}
+  if(!confirm('Rechnung „'+c.n+'" an finance@fenyx-office.com senden?'))return;
+  try{
+    var u=await apiFetch('GET','file',{path:c.file});
+    if(!u.url) throw new Error('PDF nicht verfügbar');
+    var resp=await fetch(u.url);
+    var blob=await resp.blob();
+    var b64=await blobToBase64(blob);
+    var ev=EVS.find(function(e){return e.id===eid;});
+    var meta={filename:c.fileName||'rechnung.pdf',anbieter:c.n,betrag:c.a,kategorie:c.cat,status:c.s,po:c.po,event:ev?fmt(ev.name):'',eventId:eid};
+    var mr=await sendFinanceMail(meta,b64);
+    alert(mr.msg);
+  }catch(e){ alert('Fehler: '+e.message); }
+}
 function delCo(id,eid){
   if(!confirm('Diese Position wirklich löschen?'))return;
   apiFetch('DELETE','costs',{id:id})
@@ -1213,17 +1249,13 @@ async function analyzeCostPdfWithClaude(base64,filename,eid){
     rCo();rOv();rBudget();
     if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
     var _ev=EVS.find(function(e){return e.id===eid;});
-    // Automatische Finance-Mail (Power Automate) mit PDF-Anhang
-    var mailMsg='';
-    try{
-      var nr=await fetch('/.netlify/functions/notify',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({filename:filename,base64:base64,anbieter:p.anbieter,betrag:betrag,kategorie:kat,status:status,po:po,event:_ev?fmt(_ev.name):'',eventId:eid})});
-      var nd=await nr.json().catch(function(){return{};});
-      if(nd.ok) mailMsg='\nE-Mail an Finance gesendet.';
-      else if(nd.prepared) mailMsg='\n(E-Mail noch nicht aktiv: POWER_AUTOMATE_URL in Netlify setzen.)';
-      else mailMsg='\nE-Mail-Versand fehlgeschlagen: '+(nd.error||'unbekannt');
-    }catch(me){ mailMsg='\nE-Mail-Versand fehlgeschlagen: '+me.message; }
-    alert('Rechnung gespeichert: '+p.anbieter+' \u2013 '+num(betrag)+' \u20ac netto'+(_ev?'\nEvent: '+fmt(_ev.name):'')+mailMsg);
+    document.getElementById('co-pdf-loading').style.display='none';
+    // Best\u00e4tigung vor dem Versand an Finance
+    var meta={filename:filename,anbieter:p.anbieter,betrag:betrag,kategorie:kat,status:status,po:po,event:_ev?fmt(_ev.name):'',eventId:eid};
+    if(confirm('Rechnung gespeichert: '+p.anbieter+' \u2013 '+num(betrag)+' \u20ac netto'+(_ev?'\nEvent: '+fmt(_ev.name):'')+'\n\nJetzt an finance@fenyx-office.com senden?')){
+      var mr=await sendFinanceMail(meta,base64);
+      alert(mr.msg);
+    }
   }catch(err){
     alert('Fehler: '+err.message+'\n\nPr\xfcfe ANTHROPIC_API_KEY und SUPABASE-Keys in Netlify.');
   }finally{
@@ -1468,7 +1500,7 @@ function rDCo(){
     (tot>0?'<div class="card mb16"><div class="ul" style="margin-bottom:14px">Kostenverteilung nach Kategorie</div><div class="viz-row">'+donutSeg(Object.keys(CAT).map(function(k){return {v:cs.filter(function(c){return c.cat===k;}).reduce(function(a,c){return a+c.a;},0),c:CAT[k].c};}),132,20,num(tot),'GESAMT \u20ac')+'<div class="donut-legend">'+Object.keys(CAT).map(function(k){var v=cs.filter(function(c){return c.cat===k;}).reduce(function(a,c){return a+c.a;},0);var pct=tot?Math.round(v/tot*100):0;return '<div class="donut-li"><span class="donut-dot" style="background:'+CAT[k].c+'"></span><span>'+CAT[k].l+'</span><b>'+num(v)+' \u20ac \u00b7 '+pct+'%</b></div>';}).join('')+'</div></div></div>':'')+'<div class="card"><div id="d-addF" class="add-form"><div class="ul mb12">Neue Position</div><div class="g4"><input class="fi" id="dcn" placeholder="Bezeichnung"><input class="fi" id="dca" type="number" placeholder="Netto \u20ac"><select class="fi" id="dcc"><option value="location">Location &amp; Technik</option><option value="catering">Catering &amp; Bewirtung</option><option value="marketing">Marketing &amp; Speaker</option></select><select class="fi" id="dcs"><option>Angebot</option><option>beauftragt</option><option>bezahlt</option></select></div><div class="g2" style="margin-bottom:12px"><input class="fi" id="dcd" type="date"><select class="fi" id="dcpo">'+poOptions('')+'</select></div><div class="fg"><button class="btn" onclick="subDCo()">Hinzuf\u00fcgen</button><button class="btn-g" onclick="togF(\'d-addF\')">Abbrechen</button></div></div>'+
     '<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn" onclick="togF(\'d-addF\')">+ Position hinzuf\u00fcgen</button></div>'+
     '<table class="dt"><thead><tr><th>Datum</th><th>Position</th><th>Kategorie</th><th>PO-Nr.</th><th>Netto</th><th>Status</th><th></th></tr></thead><tbody>'+
-    (cs.length?[...cs].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0)).map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td><td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-size:12px;color:'+(c.po?'var(--text)':'var(--hint)')+'">'+(c.po?esc(c.po):'\u2014')+'</td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td><td style="white-space:nowrap">'+(c.file?'<button onclick="openInvoiceFor(\''+c.id+'\',\''+ev.id+'\')" title="Rechnung anzeigen" style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:11px;padding:0 6px;text-decoration:underline">PDF</button>':'')+'<button onclick="splitCo(\''+c.id+'\',\''+ev.id+'\')" title="Rechnung aufteilen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:11px;padding:0 6px;text-decoration:underline">teilen</button><button onclick="delCo(\''+c.id+'\',\''+ev.id+'\')" title="L\u00f6schen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;padding:0 4px">\u00d7</button></td></tr>').join(''):'<tr><td colspan="7" style="padding:24px 0;text-align:center;color:var(--hint)">Keine Positionen</td></tr>')+
+    (cs.length?[...cs].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0)).map(c=>'<tr><td style="color:var(--mut);font-size:12px">'+(c.d||'—')+'</td><td style="font-weight:500">'+c.n+'</td><td><span class="cp cp-'+c.cat+'">'+CAT[c.cat].l+'</span></td><td style="font-size:12px;color:'+(c.po?'var(--text)':'var(--hint)')+'">'+(c.po?esc(c.po):'\u2014')+'</td><td style="font-weight:700">'+num(c.a)+' \u20ac</td><td><span class="b b-'+c.s.toLowerCase()+'">'+c.s+'</span></td><td style="white-space:nowrap">'+(c.file?'<button onclick="openInvoiceFor(\''+c.id+'\',\''+ev.id+'\')" title="Rechnung anzeigen" style="background:none;border:none;cursor:pointer;color:#2563EB;font-size:11px;padding:0 6px;text-decoration:underline">PDF</button><button onclick="sendInvoiceMailFor(\''+c.id+'\',\''+ev.id+'\')" title="An Finance senden" style="background:none;border:none;cursor:pointer;color:#059669;font-size:11px;padding:0 6px;text-decoration:underline">Finance</button>':'')+'<button onclick="splitCo(\''+c.id+'\',\''+ev.id+'\')" title="Rechnung aufteilen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:11px;padding:0 6px;text-decoration:underline">teilen</button><button onclick="delCo(\''+c.id+'\',\''+ev.id+'\')" title="L\u00f6schen" style="background:none;border:none;cursor:pointer;color:var(--hint);font-size:15px;padding:0 4px">\u00d7</button></td></tr>').join(''):'<tr><td colspan="7" style="padding:24px 0;text-align:center;color:var(--hint)">Keine Positionen</td></tr>')+
     '</tbody></table></div>';
 }
 function subDCo(){
