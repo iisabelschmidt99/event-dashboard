@@ -37,14 +37,21 @@ function eur(v) {
   return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
-// PDF serverseitig aus Supabase Storage holen und als base64 zurückgeben
+// PDF serverseitig aus Supabase Storage holen und als base64 zurückgeben.
+// Weg über die signierte URL (identisch zu den funktionierenden PDF-Links).
 async function fetchFromStorage(path) {
   if (!path || !SB_URL || !SB_KEY) return '';
-  const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/${encodeURI(path)}`, {
-    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
+  const s = await fetch(`${SB_URL}/storage/v1/object/sign/${BUCKET}/${encodeURI(path)}`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expiresIn: 120 })
   });
-  if (!r.ok) return '';
-  const buf = Buffer.from(await r.arrayBuffer());
+  if (!s.ok) return '';
+  let sd; try { sd = JSON.parse(await s.text()); } catch { return ''; }
+  if (!sd.signedURL) return '';
+  const f = await fetch(`${SB_URL}/storage/v1${sd.signedURL}`);
+  if (!f.ok) return '';
+  const buf = Buffer.from(await f.arrayBuffer());
   return buf.toString('base64');
 }
 
@@ -145,7 +152,7 @@ exports.handler = async function (event) {
     });
     const txt = await r.text();
     if (!r.ok) return res(502, { ok: false, error: 'Power Automate Fehler: ' + (txt || r.statusText) });
-    return res(200, { ok: true });
+    return res(200, { ok: true, attachmentBytes: Math.floor(contentBytes.length * 3 / 4), source: body.path ? 'storage' : 'base64' });
   } catch (e) {
     return res(502, { ok: false, error: e.message });
   }

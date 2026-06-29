@@ -1133,7 +1133,7 @@ async function sendFinanceMail(meta){
     var nr=await fetch('/.netlify/functions/notify',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(meta)});
     var nd=await nr.json().catch(function(){return{};});
-    if(nd.ok) return {ok:true,msg:'E-Mail an Finance gesendet.'};
+    if(nd.ok){ var kb=nd.attachmentBytes?Math.round(nd.attachmentBytes/1024):0; return {ok:true,msg:'E-Mail an Finance gesendet ('+kb+' KB PDF angehängt, Quelle: '+(nd.source||'?')+').'}; }
     if(nd.prepared) return {ok:false,msg:'E-Mail noch nicht aktiv: POWER_AUTOMATE_URL in Netlify setzen UND neu deployen.'};
     return {ok:false,msg:'E-Mail-Versand fehlgeschlagen: '+(nd.error||'unbekannt')};
   }catch(me){ return {ok:false,msg:'E-Mail-Versand fehlgeschlagen: '+me.message}; }
