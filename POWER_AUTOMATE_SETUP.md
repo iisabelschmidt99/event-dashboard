@@ -17,7 +17,7 @@ Ablauf: Dashboard → `notify.js` → **HTTP-Webhook (dieser Flow)** → E-Mail 
   "to": "finance@fenyx-office.com",
   "subject": "Rechnung",
   "filename": "rechnung.pdf",
-  "contentBytes": "JVBERi0xLjQK...(Base64 des PDFs, ohne data:-Präfix)",
+  "contentBytes": "JVBERi0xLjQK...(Base64 des PDFs)",
   "anbieter": "Balci & Gastronomie Hafen GmbH",
   "betrag": 2975,
   "kategorie": "location",
@@ -25,12 +25,16 @@ Ablauf: Dashboard → `notify.js` → **HTTP-Webhook (dieser Flow)** → E-Mail 
   "po": "PO-12345",
   "event": "Architekten",
   "eventId": "1229695179966",
-  "bodyText": "Neue Rechnung hochgeladen.\nLieferant: ...\nNetto: ... EUR\n..."
+  "bodyHtml": "<div>...formatierter HTML-Mailtext...</div>",
+  "bodyText": "Hallo Buchhaltung, ...(Klartext-Variante)"
 }
 ```
 
-Wichtig: `contentBytes` ist das **Base64** des PDFs. Im Mail-Anhang muss es mit
-`base64ToBinary(...)` in Binärdaten zurückgewandelt werden (siehe Schritt 3).
+Wichtig:
+- `contentBytes` ist das **Base64** des PDFs (wird von `notify.js` serverseitig aus
+  dem Storage geholt und ist immer befüllt). Im Mail-Anhang muss es mit
+  `base64ToBinary(...)` in Binärdaten zurückgewandelt werden (Schritt 3).
+- `bodyHtml` ist der **schön formatierte** Mailtext (HTML) — den ins Body-Feld setzen.
 
 ---
 
@@ -66,6 +70,7 @@ Wichtig: `contentBytes` ist das **Base64** des PDFs. Im Mail-Anhang muss es mit
   "po": "PO-12345",
   "event": "Architekten",
   "eventId": "1229695179966",
+  "bodyHtml": "<div>Beispiel</div>",
   "bodyText": "Neue Rechnung hochgeladen."
 }
 ```
@@ -86,7 +91,7 @@ Wichtig: `contentBytes` ist das **Base64** des PDFs. Im Mail-Anhang muss es mit
    |---------------|-----------------------------------------------------------------|
    | **An (To)**   | `finance@fenyx-office.com` (oder dynamisch das Feld `to`)        |
    | **Betreff**   | das dynamische Feld `subject`  → ergibt „Rechnung"               |
-   | **Textkörper**| das dynamische Feld `bodyText`                                  |
+   | **Textkörper**| das dynamische Feld **`bodyHtml`** (schön formatiert; „Is HTML" bleibt Ja) |
 
 3. Unten **„Erweiterte Optionen anzeigen"** → Bereich **Anlagen (Attachments)**:
 
