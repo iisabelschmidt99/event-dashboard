@@ -1127,41 +1127,27 @@ function openInvoiceFor(id,eid){
     .then(function(d){ if(d.url) window.open(d.url,'_blank'); else alert('PDF nicht verfügbar'); })
     .catch(function(e){ alert('PDF-Link Fehler: '+e.message); });
 }
-// Finance-Mail senden (gemeinsamer Helper)
-async function sendFinanceMail(meta,base64){
+// Finance-Mail senden (gemeinsamer Helper). meta enthält path (Storage) und/oder base64.
+async function sendFinanceMail(meta){
   try{
     var nr=await fetch('/.netlify/functions/notify',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(Object.assign({base64:base64},meta))});
+      body:JSON.stringify(meta)});
     var nd=await nr.json().catch(function(){return{};});
     if(nd.ok) return {ok:true,msg:'E-Mail an Finance gesendet.'};
     if(nd.prepared) return {ok:false,msg:'E-Mail noch nicht aktiv: POWER_AUTOMATE_URL in Netlify setzen UND neu deployen.'};
     return {ok:false,msg:'E-Mail-Versand fehlgeschlagen: '+(nd.error||'unbekannt')};
   }catch(me){ return {ok:false,msg:'E-Mail-Versand fehlgeschlagen: '+me.message}; }
 }
-function blobToBase64(blob){
-  return new Promise(function(resolve,reject){
-    var r=new FileReader();
-    r.onload=function(){ resolve(String(r.result).split(',')[1]||''); };
-    r.onerror=reject; r.readAsDataURL(blob);
-  });
-}
-// Rechnung einer bestehenden Position (mit PDF) an Finance senden
+// Rechnung einer bestehenden Position (mit PDF) an Finance senden – Server holt das PDF aus dem Storage
 async function sendInvoiceMailFor(id,eid){
   var c=(_C[eid]||[]).find(function(x){return String(x.id)===String(id);});
   if(!c){alert('Position nicht gefunden');return;}
   if(!c.file){alert('Für diese Position ist kein PDF hinterlegt.');return;}
   if(!confirm('Rechnung „'+c.n+'" an finance@fenyx-office.com senden?'))return;
-  try{
-    var u=await apiFetch('GET','file',{path:c.file});
-    if(!u.url) throw new Error('PDF nicht verfügbar');
-    var resp=await fetch(u.url);
-    var blob=await resp.blob();
-    var b64=await blobToBase64(blob);
-    var ev=EVS.find(function(e){return e.id===eid;});
-    var meta={filename:c.fileName||'rechnung.pdf',anbieter:c.n,betrag:c.a,kategorie:c.cat,status:c.s,po:c.po,event:ev?fmt(ev.name):'',eventId:eid};
-    var mr=await sendFinanceMail(meta,b64);
-    alert(mr.msg);
-  }catch(e){ alert('Fehler: '+e.message); }
+  var ev=EVS.find(function(e){return e.id===eid;});
+  var meta={filename:c.fileName||'rechnung.pdf',path:c.file,anbieter:c.n,betrag:c.a,kategorie:c.cat,status:c.s,po:c.po,event:ev?fmt(ev.name):'',eventId:eid};
+  var mr=await sendFinanceMail(meta);
+  alert(mr.msg);
 }
 function delCo(id,eid){
   if(!confirm('Diese Position wirklich löschen?'))return;
@@ -1250,10 +1236,11 @@ async function analyzeCostPdfWithClaude(base64,filename,eid){
     if(_SEL&&document.getElementById('v-d').style.display!=='none')rDCo();
     var _ev=EVS.find(function(e){return e.id===eid;});
     document.getElementById('co-pdf-loading').style.display='none';
-    // Best\u00e4tigung vor dem Versand an Finance
-    var meta={filename:filename,anbieter:p.anbieter,betrag:betrag,kategorie:kat,status:status,po:po,event:_ev?fmt(_ev.name):'',eventId:eid};
+    // Best\u00e4tigung vor dem Versand an Finance (Server holt PDF aus Storage \u00fcber path)
+    var meta={filename:filename,path:filePath||'',anbieter:p.anbieter,betrag:betrag,kategorie:kat,status:status,po:po,event:_ev?fmt(_ev.name):'',eventId:eid};
+    if(!filePath) meta.base64=base64; // Fallback, falls Storage-Upload fehlschlug
     if(confirm('Rechnung gespeichert: '+p.anbieter+' \u2013 '+num(betrag)+' \u20ac netto'+(_ev?'\nEvent: '+fmt(_ev.name):'')+'\n\nJetzt an finance@fenyx-office.com senden?')){
-      var mr=await sendFinanceMail(meta,base64);
+      var mr=await sendFinanceMail(meta);
       alert(mr.msg);
     }
   }catch(err){
