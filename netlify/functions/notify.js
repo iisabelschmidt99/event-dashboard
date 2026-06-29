@@ -37,19 +37,24 @@ function eur(v) {
   return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
-// PDF serverseitig aus Supabase Storage holen und als base64 zurückgeben.
-// Weg über die signierte URL (identisch zu den funktionierenden PDF-Links).
-async function fetchFromStorage(path) {
+// Signierte Download-URL für einen Storage-Pfad erzeugen (gültig N Sekunden)
+async function signUrl(path, expiresIn) {
   if (!path || !SB_URL || !SB_KEY) return '';
   const s = await fetch(`${SB_URL}/storage/v1/object/sign/${BUCKET}/${encodeURI(path)}`, {
     method: 'POST',
     headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ expiresIn: 120 })
+    body: JSON.stringify({ expiresIn: expiresIn || 3600 })
   });
   if (!s.ok) return '';
   let sd; try { sd = JSON.parse(await s.text()); } catch { return ''; }
-  if (!sd.signedURL) return '';
-  const f = await fetch(`${SB_URL}/storage/v1${sd.signedURL}`);
+  return sd.signedURL ? `${SB_URL}/storage/v1${sd.signedURL}` : '';
+}
+
+// PDF serverseitig aus Storage holen und als base64 zurückgeben (Fallback-Weg)
+async function fetchFromStorage(path) {
+  const url = await signUrl(path, 120);
+  if (!url) return '';
+  const f = await fetch(url);
   if (!f.ok) return '';
   const buf = Buffer.from(await f.arrayBuffer());
   return buf.toString('base64');
@@ -92,6 +97,10 @@ exports.handler = async function (event) {
     if (!contentBytes && body.base64) contentBytes = body.base64;
   } catch (e) { fetchNote = e.message; }
 
+  // Signierte Download-URL (1h) für den HTTP-GET-Weg in Power Automate (Plan B)
+  let fileUrl = '';
+  try { if (body.path) fileUrl = await signUrl(body.path, 3600); } catch (e) { /* egal */ }
+
   const katLabel = CAT_LABEL[body.kategorie] || body.kategorie || '–';
   const bodyHtml =
     '<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#1a1a1a;line-height:1.5">' +
@@ -126,6 +135,7 @@ exports.handler = async function (event) {
     subject:   SUBJECT,
     filename:  body.filename || 'rechnung.pdf',
     contentBytes,          // base64 des PDFs (serverseitig geholt)
+    fileUrl,               // signierter Download-Link (für HTTP-GET-Anhang, Plan B)
     anbieter:  body.anbieter || '',
     betrag:    body.betrag != null ? body.betrag : '',
     kategorie: body.kategorie || '',
@@ -141,7 +151,7 @@ exports.handler = async function (event) {
     return res(200, { ok: false, prepared: true,
       message: 'POWER_AUTOMATE_URL nicht gesetzt – E-Mail wurde NICHT versendet.' });
   }
-  if (!contentBytes) {
+  if (!contentBytes && !fileUrl) {
     return res(200, { ok: false,
       error: 'PDF konnte nicht angehängt werden (' + (fetchNote || 'kein PDF gefunden') + '). E-Mail nicht gesendet.' });
   }
