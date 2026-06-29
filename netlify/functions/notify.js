@@ -29,11 +29,17 @@ exports.handler = async function (event) {
   // Diagnose: GET zeigt, ob die Webhook-URL beim Function-Deploy ankommt
   // (ohne die URL selbst preiszugeben). Aufruf: /.netlify/functions/notify
   if (event.httpMethod === 'GET') {
+    const hasSig = /[?&]sig=/.test(hook);
     return res(200, {
       configured: !!hook,
-      hint: hook
-        ? 'POWER_AUTOMATE_URL ist gesetzt.'
-        : 'POWER_AUTOMATE_URL ist NICHT gesetzt. In Netlify eintragen UND neu deployen.'
+      length: hook.length,            // grobe Plausibilität (vollständige URL ~ 250+ Zeichen)
+      hasSignature: hasSig,           // 'Jeder/Anyone'-URLs enthalten ?...&sig=...
+      startsWithHttps: hook.startsWith('https://'),
+      hint: !hook
+        ? 'POWER_AUTOMATE_URL ist NICHT gesetzt. In Netlify eintragen UND neu deployen.'
+        : (hasSig
+            ? 'URL ist gesetzt und enthält eine Signatur (sig=). Sieht gut aus.'
+            : 'URL ist gesetzt, aber OHNE sig=-Parameter. Vermutlich unvollständig/veraltet – nach Umstellung auf „Jeder" die NEUE URL kopieren.')
     });
   }
 
