@@ -58,6 +58,20 @@ exports.handler = async function(event) {
       if (event.httpMethod === 'DELETE') return await deleteLead(p.id);
     }
 
+    if (resource === 'agenda_items') {
+      if (event.httpMethod === 'GET')    return await getAgendaItems();
+      if (event.httpMethod === 'POST')   return await postAgendaItem(JSON.parse(event.body || '{}'));
+      if (event.httpMethod === 'PUT')    return await putAgendaItem(JSON.parse(event.body || '{}'));
+      if (event.httpMethod === 'DELETE') return await deleteAgendaItem(p.id);
+    }
+
+    if (resource === 'tasks') {
+      if (event.httpMethod === 'GET')    return await getTasks();
+      if (event.httpMethod === 'POST')   return await postTask(JSON.parse(event.body || '{}'));
+      if (event.httpMethod === 'PUT')    return await putTask(JSON.parse(event.body || '{}'));
+      if (event.httpMethod === 'DELETE') return await deleteTask(p.id);
+    }
+
     // Rechnungs-PDF in Supabase Storage hochladen
     if (resource === 'upload' && event.httpMethod === 'POST') {
       return await uploadInvoice(JSON.parse(event.body || '{}'));
@@ -434,5 +448,143 @@ async function putLead(body) {
 async function deleteLead(id) {
   if (!id) return json(400, { error: 'id fehlt' });
   await sb(`leads?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', prefer: 'return=minimal' });
+  return json(200, { ok: true });
+}
+
+
+// ── Übersicht: Termine außerhalb von HubSpot ─────────────────────────────────
+
+function mapAgendaItem(row) {
+  return {
+    id:          row.id,
+    title:       row.title,
+    kind:        row.kind,
+    status:      row.status,
+    date:        row.item_date || '',
+    provisional: !!row.date_is_provisional,
+    time:        row.start_time ? String(row.start_time).slice(0, 5) : '',
+    loc:         row.location || '',
+    org:         row.organizer || '',
+    note:        row.note || ''
+  };
+}
+
+async function getAgendaItems() {
+  const rows = await sb('agenda_items?select=*&order=item_date.asc.nullslast');
+  return json(200, { results: (rows || []).map(mapAgendaItem) });
+}
+
+function agendaPayload(body) {
+  return {
+    title:               body.title || '',
+    kind:                body.kind   || 'sonstiges',
+    status:              body.status || 'geplant',
+    item_date:           body.date || null,
+    date_is_provisional: !!body.provisional,
+    start_time:          body.time || null,
+    location:            body.loc  || '',
+    organizer:           body.org  || '',
+    note:                body.note || ''
+  };
+}
+
+async function postAgendaItem(body) {
+  if (!body.title) return json(400, { error: 'title fehlt' });
+  const rows = await sb('agenda_items', { method: 'POST', body: JSON.stringify(agendaPayload(body)) });
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  return json(201, mapAgendaItem(row));
+}
+
+async function putAgendaItem(body) {
+  if (!body.id) return json(400, { error: 'id fehlt' });
+  const patch = agendaPayload(body);
+  patch.updated_at = new Date().toISOString();
+  const rows = await sb(`agenda_items?id=eq.${encodeURIComponent(body.id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch)
+  });
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  return json(200, mapAgendaItem(row));
+}
+
+async function deleteAgendaItem(id) {
+  if (!id) return json(400, { error: 'id fehlt' });
+  await sb(`agenda_items?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', prefer: 'return=minimal' });
+  return json(200, { ok: true });
+}
+
+// ── Übersicht: To-dos ────────────────────────────────────────────────────────
+
+function mapTask(row) {
+  return {
+    id:       row.id,
+    l:        row.label,
+    due:      row.due_date || '',
+    done:     !!row.done,
+    prio:     row.priority || 'normal',
+    note:     row.note || '',
+    agendaId: row.agenda_item_id || null,
+    eventId:  row.event_id || null
+  };
+}
+
+// Liefert alle To-dos einmal flach und einmal nach HubSpot-Event gruppiert.
+// byEvent bedient die Eventplanung im Event-Dashboard ohne zweiten Request.
+async function getTasks() {
+  const rows = await sb('tasks?select=*&order=due_date.asc.nullslast');
+  const results = (rows || []).map(mapTask);
+  const byEvent = {};
+  results.forEach(t => {
+    if (!t.eventId) return;
+    if (!byEvent[t.eventId]) byEvent[t.eventId] = [];
+    byEvent[t.eventId].push(t);
+  });
+  return json(200, { results, byEvent });
+}
+
+function taskPayload(body) {
+  const agendaId = body.agendaId || body.agenda_item_id || null;
+  const eventId  = body.eventId  || body.event_id      || null;
+  return {
+    label:          body.l || body.label || '',
+    due_date:       body.due || body.due_date || null,
+    done:           !!body.done,
+    priority:       body.prio || body.priority || 'normal',
+    note:           body.note || '',
+    // tasks_single_link erlaubt nur eine der beiden Verknüpfungen
+    agenda_item_id: agendaId || null,
+    event_id:       agendaId ? null : (eventId || null)
+  };
+}
+
+async function postTask(body) {
+  const payload = taskPayload(body);
+  if (!payload.label) return json(400, { error: 'label fehlt' });
+  if (payload.event_id) await ensureEvent(payload.event_id, body.event || {});
+  const rows = await sb('tasks', { method: 'POST', body: JSON.stringify(payload) });
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  return json(201, mapTask(row));
+}
+
+// Teil-Update: nur mitgeschickte Felder werden gesetzt (z.B. nur done beim Abhaken).
+async function putTask(body) {
+  if (!body.id) return json(400, { error: 'id fehlt' });
+  const patch = { updated_at: new Date().toISOString() };
+  if (body.l    !== undefined || body.label    !== undefined) patch.label    = body.l   || body.label;
+  if (body.due  !== undefined || body.due_date !== undefined) patch.due_date = (body.due || body.due_date) || null;
+  if (body.done !== undefined) patch.done     = !!body.done;
+  if (body.prio !== undefined) patch.priority = body.prio;
+  if (body.note !== undefined) patch.note     = body.note;
+  const rows = await sb(`tasks?id=eq.${encodeURIComponent(body.id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch)
+  });
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  return json(200, mapTask(row));
+}
+
+async function deleteTask(id) {
+  if (!id) return json(400, { error: 'id fehlt' });
+  await sb(`tasks?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', prefer: 'return=minimal' });
   return json(200, { ok: true });
 }

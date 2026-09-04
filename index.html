@@ -212,6 +212,8 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 #lmodal.on{display:flex}
 #smodal{position:fixed;inset:0;background:rgba(13,17,23,.55);z-index:1000;display:none;align-items:center;justify-content:center}
 #smodal.on{display:flex}
+#umodal,#tmodal{position:fixed;inset:0;background:rgba(13,17,23,.55);z-index:1000;display:none;align-items:center;justify-content:center}
+#umodal.on,#tmodal.on{display:flex}
 .mbox-wide{width:680px}
 .split-row{display:grid;grid-template-columns:2fr 1fr 1.3fr 1.3fr 28px;gap:7px;margin-bottom:7px;align-items:center}
 .split-row .fi{padding:7px 9px;font-size:12px}
@@ -243,6 +245,36 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
 .ring{position:relative;width:48px;height:48px;flex-shrink:0}
 .ring svg{transform:rotate(-90deg)}
 .ring-in{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+
+/* ── ÜBERSICHT (übergeordnete Ebene) ── */
+.ucal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.ucal-dh{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hint);text-align:center;padding-bottom:7px}
+.ucal-c{min-height:92px;border:1px solid var(--border);border-radius:7px;padding:5px 6px;background:var(--card);cursor:pointer;overflow:hidden;transition:border-color .12s,box-shadow .12s}
+.ucal-c:hover{border-color:#D4DAD2}
+.ucal-c.pad{background:transparent;border-color:transparent;cursor:default}
+.ucal-c.td{border-color:var(--ink)}
+.ucal-c.sel{border-color:var(--ink);box-shadow:0 0 0 2px rgba(13,17,23,.13)}
+.ucal-n{font-family:var(--fh);font-size:12px;font-weight:800;color:var(--hint);line-height:1;margin-bottom:3px}
+.ucal-c.td .ucal-n{color:var(--ink)}
+.uchip{display:block;font-size:10px;line-height:1.35;padding:2px 5px;border-radius:3px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.uchip-ev{background:var(--lime);color:#0D1117}
+.uchip-tk{background:transparent;border:1px dashed var(--hint);color:var(--mut);font-weight:500}
+.uchip-tk.od{border-color:#EF4444;color:#EF4444}
+.uchip-tk.dn{opacity:.4;text-decoration:line-through}
+.ucal-more{font-size:9px;color:var(--hint);margin-top:2px;padding-left:2px}
+.ugrid{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:16px;align-items:start}
+.udot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.urow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.urow:last-child{border-bottom:none}
+.urow-t{flex:1;font-size:13px;min-width:0}
+.urow-t .s{display:block;font-size:11px;color:var(--hint);margin-top:1px}
+.urow-d{font-size:11px;color:var(--hint);white-space:nowrap}
+.ux{background:none;border:none;cursor:pointer;color:var(--border);font-size:15px;padding:0 2px;line-height:1}
+.ux:hover{color:#EF4444}
+.uleg{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.uleg span{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mut)}
+.uprov{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#D97706;border:1px solid #FCD34D;background:#FEF9EC;border-radius:3px;padding:1px 4px;margin-left:5px;vertical-align:middle}
+@media(max-width:1100px){.ugrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -252,15 +284,43 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
   <img src="https://cdn.prod.website-files.com/6988d9ea184c3a10bc10d7e6/6988d9ea184c3a10bc10d85b_Fenyx_Logo_white.svg" alt="FENYX" style="height:24px;display:block" onerror="this.style.cssText='font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:3px';this.outerHTML='<span style=\"font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:3px\">FENYx</span>'">
   <div class="nav-center">Netzwerkmarketing &middot; Event-Dashboard 2026</div>
   <div class="nav-r">
-    <button class="nbtn on" id="nav-m" onclick="goM()">Master</button>
+    <button class="nbtn on" id="nav-u" onclick="goU()">&#220;bersicht</button>
+    <button class="nbtn" id="nav-m" onclick="goM()">Master</button>
     <button class="nbtn" id="nav-d" onclick="goD()" title="Event in der Tabelle auswählen um die Detailansicht zu öffnen">Event-Detail</button>
   </div>
 </div>
 
 <div id="app">
 
+<!-- ═══ ÜBERSICHT ═══ -->
+<div id="v-u">
+  <div class="fb mb24">
+    <div>
+      <div class="pg-h">&#220;bersicht</div>
+      <div class="pg-s" id="u-s">Alle Termine, Fristen und To-dos</div>
+    </div>
+    <div class="fg">
+      <button class="btn-g" onclick="openAgModal()">+ Termin</button>
+      <button class="btn" onclick="openTkModal()">+ To-do</button>
+    </div>
+  </div>
+
+  <div class="card-ink mb20"><div id="u-kpis"></div></div>
+
+  <div class="ugrid">
+    <div class="card" id="u-cal"></div>
+    <div>
+      <div class="card mb16" id="u-day"></div>
+      <div class="card" id="u-next"></div>
+    </div>
+  </div>
+
+  <div class="card mb16" id="u-todo"></div>
+  <div id="u-open"></div>
+</div>
+
 <!-- ═══ MASTER ═══ -->
-<div id="v-m">
+<div id="v-m" style="display:none">
   <div class="fb mb24">
     <div>
       <div class="pg-h" id="m-h">Event-Dashboard 2026</div>
@@ -503,6 +563,46 @@ body{font-family:var(--fb);background:var(--bg);color:var(--text);font-size:14px
   </div>
 </div>
 
+<!-- TERMIN MODAL (agenda_items) -->
+<div id="umodal" onclick="if(event.target===this)closeAgModal()">
+  <div class="mbox">
+    <div class="mbox-title" id="um-title">Neuer Termin</div>
+    <div class="mbox-sub">Termine au&#223;erhalb von HubSpot &middot; Pitches, Netzwerktreffen, Messen</div>
+    <div class="frow"><label class="fl">Titel *</label><input class="fi" id="um-t" placeholder="z.B. ReOffice Netzwerktreffen"></div>
+    <div class="g2">
+      <div class="frow"><label class="fl">Art</label><select class="fi" id="um-k"><option value="pitch">Pitch</option><option value="netzwerk">Netzwerk</option><option value="messe">Messe</option><option value="webinar">Webinar</option><option value="intern">Intern</option><option value="sonstiges" selected>Sonstiges</option></select></div>
+      <div class="frow"><label class="fl">Status</label><select class="fi" id="um-st"><option value="geplant">Geplant</option><option value="angemeldet">Angemeldet</option><option value="bestaetigt">Best&#228;tigt</option><option value="abgesagt">Abgesagt</option><option value="erledigt">Erledigt</option></select></div>
+    </div>
+    <div class="g2">
+      <div class="frow"><label class="fl">Datum</label><input class="fi" id="um-d" type="date"></div>
+      <div class="frow"><label class="fl">Uhrzeit</label><input class="fi" id="um-ti" type="time"></div>
+    </div>
+    <div class="frow"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="um-pv" style="width:15px;height:15px;accent-color:#0D1117"> Datum ist vorl&#228;ufig und muss noch best&#228;tigt werden</label></div>
+    <div class="g2">
+      <div class="frow"><label class="fl">Ort</label><input class="fi" id="um-l" placeholder="z.B. RB Leipzig / online"></div>
+      <div class="frow"><label class="fl">Veranstalter</label><input class="fi" id="um-o" placeholder="z.B. CADEMI"></div>
+    </div>
+    <div class="frow"><label class="fl">Notiz</label><input class="fi" id="um-n" placeholder="Freitext&hellip;"></div>
+    <div style="display:flex;gap:10px;margin-top:18px"><button class="btn-g" onclick="closeAgModal()">Abbrechen</button><button class="btn" style="flex:2" id="um-save" onclick="subAg()">Termin speichern</button></div>
+  </div>
+</div>
+
+<!-- TO-DO MODAL (tasks) -->
+<div id="tmodal" onclick="if(event.target===this)closeTkModal()">
+  <div class="mbox">
+    <div class="mbox-title">Neues To-do</div>
+    <div class="mbox-sub">Optional mit einem Termin oder HubSpot-Event verkn&#252;pfen</div>
+    <div class="frow"><label class="fl">Aufgabe *</label><input class="fi" id="tm-l" placeholder="z.B. Anmeldung absenden"></div>
+    <div class="g2">
+      <div class="frow"><label class="fl">F&#228;llig am</label><input class="fi" id="tm-d" type="date"></div>
+      <div class="frow"><label class="fl">Priorit&#228;t</label><select class="fi" id="tm-p"><option value="hoch">Hoch</option><option value="normal" selected>Normal</option><option value="niedrig">Niedrig</option></select></div>
+    </div>
+    <div class="frow"><label class="fl">Verkn&#252;pfung</label><select class="fi" id="tm-r"></select></div>
+    <div class="frow"><label class="fl">Notiz</label><input class="fi" id="tm-n" placeholder="Freitext&hellip;"></div>
+    <div style="display:flex;gap:10px;margin-top:18px"><button class="btn-g" onclick="closeTkModal()">Abbrechen</button><button class="btn" style="flex:2" id="tm-save" onclick="subTk()">To-do speichern</button></div>
+  </div>
+</div>
+
 <!-- CAL POPUP -->
 <div id="pop"><div class="pop-h" id="pop-h"></div><div id="pop-b"></div></div>
 
@@ -548,7 +648,7 @@ let EVS=[
 ];
 let _C={};
 let _L={};
-let _T={'1229692999905':[{id:'t1',l:'Namensschilder drucken',done:false,due:'2026-06-15'},{id:'t2',l:'WLAN-Zugangsdaten kl\u00e4ren',done:true,due:'2026-06-10'},{id:'t3',l:'Parkplatz-Info an G\u00e4ste',done:false,due:'2026-06-16'}]};
+let _T={};   // abgeleitet aus _TK (tasks-Tabelle), gruppiert nach event_id — siehe _syncT()
 let _P={};
 let _RQ={};
 
@@ -658,9 +758,12 @@ function donutDark(pct,color,size){
 window.addEventListener('DOMContentLoaded',function(){
   const n=new Date();
   _calY=n.getFullYear();_calM=n.getMonth();
+  _uY=n.getFullYear();_uM=n.getMonth();
   popSels();
   rAll();
-  _updNav();
+  rU();
+  // ?event=<events.id> öffnet direkt die Detailansicht, sonst startet die Übersicht
+  if(!_deepLink())_updNav();
   document.addEventListener('click',function(e){if(!e.target.closest('#pop')&&!e.target.closest('.cal-c'))closePop();});
 });
 
@@ -672,17 +775,24 @@ function rAll(){
 // ════════════════════════════════════════════════
 // NAV
 // ════════════════════════════════════════════════
+// 'u' = Übersicht (übergeordnet), 'm' = Master, 'd' = Event-Detail
+var _VIEW='u';
 function _updNav(){
   var hasSel=!!_SEL;
-  var inDetail=document.getElementById('v-d').style.display!=='none';
-  document.getElementById('nav-m').classList.toggle('on',!inDetail);
-  document.getElementById('nav-d').classList.toggle('on',inDetail);
+  ['u','m','d'].forEach(function(v){
+    document.getElementById('v-'+v).style.display  = _VIEW===v?'':'none';
+    document.getElementById('nav-'+v).classList.toggle('on',_VIEW===v);
+  });
   document.getElementById('nav-d').style.opacity=hasSel?'1':'0.35';
   document.getElementById('nav-d').style.pointerEvents=hasSel?'auto':'none';
 }
+function goU(){
+  _VIEW='u';
+  _updNav();
+  rU();
+}
 function goM(){
-  document.getElementById('v-m').style.display='';
-  document.getElementById('v-d').style.display='none';
+  _VIEW='m';
   _updNav();
 }
 function goD(){
@@ -695,15 +805,13 @@ function goD(){
     }
     return;
   }
-  document.getElementById('v-m').style.display='none';
-  document.getElementById('v-d').style.display='';
+  _VIEW='d';
   _updNav();
   rDetail();
 }
 function openEv(id){
   _SEL=id;
-  document.getElementById('v-m').style.display='none';
-  document.getElementById('v-d').style.display='';
+  _VIEW='d';
   _updNav();
   rDetail();
 }
@@ -1414,9 +1522,21 @@ function planCard(ev){
     '</div></div>';
 }
 function togReq(eid,iid){const r=eR(eid);r[iid]=!r[iid];rPl();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();}
-function togTask(eid,tid){if(!_T[eid])return;_T[eid]=_T[eid].map(t=>t.id===tid?{...t,done:!t.done}:t);rPl();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();}
-function delTask(eid,tid){if(!_T[eid])return;_T[eid]=_T[eid].filter(t=>t.id!==tid);rPl();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();}
-function addTask(eid){const inp=document.getElementById('ti-'+eid),due=document.getElementById('td-'+eid);if(!inp?.value.trim())return;if(!_T[eid])_T[eid]=[];_T[eid].push({id:gid(),l:inp.value.trim(),done:false,due:due?.value||''});inp.value='';if(due)due.value='';rPl();if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();}
+// Aufgaben der Eventplanung sind To-dos aus der tasks-Tabelle mit event_id.
+// Ein einziges To-do-System, gemeinsam mit der Übersicht.
+function togTask(eid,tid){tkTog(tid);}
+function delTask(eid,tid){tkDel(tid);}
+async function addTask(eid){
+  const inp=document.getElementById('ti-'+eid),due=document.getElementById('td-'+eid);
+  if(!inp||!inp.value.trim())return;
+  const body={l:inp.value.trim(),due:(due&&due.value)||null,eventId:eid,event:_eventMeta(eid)};
+  inp.value='';if(due)due.value='';
+  try{
+    _TK.push(await apiFetch('POST','tasks',{},body));
+    _syncT();rPl();rU();
+    if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();
+  }catch(e){alert('Aufgabe konnte nicht gespeichert werden: '+e.message);}
+}
 
 // ════════════════════════════════════════════════
 // PARTICIPANTS
@@ -1754,6 +1874,402 @@ async function analyzePdfWithClaude(base64,filename){
 // acceptBudgetAI removed — PDF flow now adds directly to budget table
 
 /* ═══════════════════════════════════════════════════════════
+   ÜBERSICHT — übergeordnete Ebene
+   Termine (agenda_items) + To-dos (tasks) aus Supabase,
+   zusammen mit den HubSpot-Events in einem Kalender.
+   Zugriff über /.netlify/functions/api (Service-Role serverseitig).
+═══════════════════════════════════════════════════════════ */
+
+const AKIND={
+  pitch:    {l:'Pitch',    c:'#0D1117'},
+  netzwerk: {l:'Netzwerk', c:'#2563EB'},
+  messe:    {l:'Messe',    c:'#7C3AED'},
+  webinar:  {l:'Webinar',  c:'#0891B2'},
+  intern:   {l:'Intern',   c:'#56675E'},
+  sonstiges:{l:'Sonstiges',c:'#8A9E93'}
+};
+const ASTAT={geplant:'Geplant',angemeldet:'Angemeldet',bestaetigt:'Bestätigt',abgesagt:'Abgesagt',erledigt:'Erledigt'};
+const APRIO={hoch:'Hoch',normal:'Normal',niedrig:'Niedrig'};
+
+let _AG=[];              // agenda_items
+let _TK=[];              // tasks (alle, auch die an HubSpot-Events hängenden)
+let _uY,_uM;             // angezeigter Monat
+let _uSel=null;          // ausgewählter Tag als 'YYYY-MM-DD'
+let _agEdit=null;        // id des Termins, der gerade bearbeitet wird
+
+// Datum ohne Zeitzonen-Versatz: 'YYYY-MM-DD' ist immer lokal gemeint
+const _pd=s=>{if(!s)return null;const m=String(s).slice(0,10).split('-');const d=new Date(+m[0],+m[1]-1,+m[2]);return isNaN(d.getTime())?null:d;};
+const _ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const _tod=()=>{const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate());};
+const _dLbl=s=>{const d=_pd(s);return d?d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'}):'—';};
+const _dLong=s=>{const d=_pd(s);return d?d.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}):'—';};
+
+function _uHint(msg,err){
+  const el=document.getElementById('u-s');if(!el)return;
+  el.textContent=msg;el.style.color=err?'#EF4444':'var(--hint)';
+}
+
+// ── Laden ───────────────────────────────────────────────────
+async function apiLoadUeber(){
+  try{
+    const res=await Promise.all([apiFetch('GET','agenda_items'),apiFetch('GET','tasks')]);
+    _AG=res[0].results||[];
+    _TK=res[1].results||[];
+    _syncT();
+    _uHint('Alle Termine, Fristen und To-dos');
+    rU();rPl();
+    if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();
+  }catch(e){
+    console.warn('apiLoadUeber:',e.message);
+    _uHint('Offline — Termine und To-dos konnten nicht geladen werden',true);
+  }
+}
+
+// _T (Eventplanung im Event-Dashboard) ist die nach event_id gruppierte Sicht auf _TK
+function _syncT(){
+  Object.keys(_T).forEach(k=>delete _T[k]);
+  _TK.forEach(t=>{if(!t.eventId)return;if(!_T[t.eventId])_T[t.eventId]=[];_T[t.eventId].push(t);});
+}
+
+// ── Alle Einträge eines Tages ───────────────────────────────
+function uByDay(){
+  const map={};
+  const put=(k,o)=>{if(!k)return;if(!map[k])map[k]=[];map[k].push(o);};
+  EVS.forEach(e=>{const d=_pd(e.date);if(d)put(_ymd(d),{t:'ev',id:e.id,label:cit(e.name)+' · '+fmt(e.name),ref:e});});
+  _AG.forEach(a=>{const d=_pd(a.date);if(d)put(_ymd(d),{t:'ag',id:a.id,label:a.title,ref:a});});
+  _TK.forEach(t=>{const d=_pd(t.due);if(d)put(_ymd(d),{t:'tk',id:t.id,label:t.l,ref:t});});
+  Object.values(map).forEach(l=>l.sort((a,b)=>({ev:0,ag:1,tk:2})[a.t]-({ev:0,ag:1,tk:2})[b.t]));
+  return map;
+}
+
+// Termine (Events + agenda_items) chronologisch ab heute
+function uUpcoming(){
+  const t0=_tod();
+  const out=[];
+  EVS.forEach(e=>{const d=_pd(e.date);if(d&&d>=t0)out.push({t:'ev',d:d,key:_ymd(d),ref:e});});
+  _AG.forEach(a=>{const d=_pd(a.date);if(d&&d>=t0&&a.status!=='abgesagt')out.push({t:'ag',d:d,key:_ymd(d),ref:a});});
+  return out.sort((a,b)=>a.d-b.d);
+}
+
+// ── Rendern ─────────────────────────────────────────────────
+function rU(){
+  const t0=_tod();
+  const in30=new Date(t0.getFullYear(),t0.getMonth(),t0.getDate()+30);
+  // Wochenende der laufenden Woche (Woche startet Montag)
+  const eow=new Date(t0.getFullYear(),t0.getMonth(),t0.getDate()+(6-((t0.getDay()+6)%7)));
+
+  const term30=uUpcoming().filter(x=>x.d<=in30).length;
+  const open=_TK.filter(t=>!t.done);
+  const overdue=open.filter(t=>{const d=_pd(t.due);return d&&d<t0;});
+  const thisWeek=open.filter(t=>{const d=_pd(t.due);return d&&d>=t0&&d<=eow;});
+
+  document.getElementById('u-kpis').innerHTML=kDark([
+    {l:'Termine in 30 Tagen',v:term30,s:''},
+    {l:'Offene To-dos',v:open.length,s:''},
+    {l:'Überfällig',v:overdue.length,s:overdue.length?'sofort erledigen':''},
+    {l:'Fristen diese Woche',v:thisWeek.length,s:''},
+    {l:'Termine gesamt',v:EVS.length+_AG.length,s:EVS.length+' aus HubSpot'}
+  ]);
+
+  rUCal();rUDay();rUNext();rUTodo();rUOpen();
+}
+
+function rUCal(){
+  const t0=_tod(),byDay=uByDay();
+  const first=new Date(_uY,_uM,1),last=new Date(_uY,_uM+1,0);
+  const lead=(first.getDay()+6)%7;
+  const cells=[];
+  for(let i=0;i<lead;i++)cells.push(null);
+  for(let d=1;d<=last.getDate();d++)cells.push(d);
+  while(cells.length%7!==0)cells.push(null);
+
+  const html=cells.map(d=>{
+    if(!d)return '<div class="ucal-c pad"></div>';
+    const key=_ymd(new Date(_uY,_uM,d));
+    const items=byDay[key]||[];
+    const chips=items.slice(0,3).map(x=>uChip(x,t0)).join('');
+    const more=items.length>3?'<div class="ucal-more">+'+(items.length-3)+' weitere</div>':'';
+    const cls='ucal-c'+(key===_ymd(t0)?' td':'')+(key===_uSel?' sel':'');
+    return '<div class="'+cls+'" onclick="uPick(\''+key+'\')"><div class="ucal-n">'+d+'</div>'+chips+more+'</div>';
+  }).join('');
+
+  document.getElementById('u-cal').innerHTML=
+    '<div class="fb mb16">'+
+      '<span style="font-size:14px;font-weight:600">'+MON[_uM]+' '+_uY+'</span>'+
+      '<div class="fg">'+
+        '<button class="btn-g" onclick="uToday()" style="font-size:11px;padding:5px 12px">Heute</button>'+
+        '<button onclick="uNav(-1)" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:transparent;cursor:pointer;font-size:15px;color:var(--mut)">‹</button>'+
+        '<button onclick="uNav(1)" style="width:28px;height:28px;border:1px solid var(--border);border-radius:5px;background:transparent;cursor:pointer;font-size:15px;color:var(--mut)">›</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="ucal-g" style="margin-bottom:4px">'+DAY.map(d=>'<div class="ucal-dh">'+d+'</div>').join('')+'</div>'+
+    '<div class="ucal-g">'+html+'</div>'+
+    '<div class="uleg">'+
+      '<span><i class="udot" style="background:var(--lime)"></i>HubSpot-Event</span>'+
+      Object.keys(AKIND).map(k=>'<span><i class="udot" style="background:'+AKIND[k].c+'"></i>'+AKIND[k].l+'</span>').join('')+
+      '<span><i class="udot" style="border:1px dashed var(--hint)"></i>Frist</span>'+
+      '<span><i class="udot" style="border:1px dashed #EF4444"></i>überfällig</span>'+
+    '</div>';
+}
+
+function uChip(x,t0){
+  if(x.t==='ev')return '<span class="uchip uchip-ev" title="'+esc(x.label)+'">'+esc(x.label)+'</span>';
+  if(x.t==='ag'){
+    const k=AKIND[x.ref.kind]||AKIND.sonstiges;
+    const op=x.ref.status==='abgesagt'?';opacity:.45;text-decoration:line-through':'';
+    return '<span class="uchip" style="background:'+k.c+';color:#fff'+op+'" title="'+esc(x.label)+'">'+esc(x.label)+'</span>';
+  }
+  const d=_pd(x.ref.due);
+  const cls='uchip uchip-tk'+(x.ref.done?' dn':(d&&d<t0?' od':''));
+  return '<span class="'+cls+'" title="'+esc(x.label)+'">'+esc(x.label)+'</span>';
+}
+
+function uNav(n){_uM+=n;if(_uM<0){_uM=11;_uY--;}if(_uM>11){_uM=0;_uY++;}rUCal();}
+function uToday(){const n=new Date();_uY=n.getFullYear();_uM=n.getMonth();_uSel=_ymd(_tod());rUCal();rUDay();}
+function uPick(key){_uSel=(_uSel===key?null:key);rUCal();rUDay();}
+
+function rUDay(){
+  const el=document.getElementById('u-day');
+  if(!_uSel){
+    el.innerHTML='<div class="sec" style="margin-bottom:6px">Tagesdetail</div><div style="font-size:13px;color:var(--hint)">Einen Tag im Kalender anklicken.</div>';
+    return;
+  }
+  const items=(uByDay()[_uSel]||[]);
+  const t0=_tod();
+  const rows=items.map(x=>{
+    if(x.t==='ev'){
+      const e=x.ref;
+      return '<div class="urow"><i class="udot" style="background:var(--lime)"></i>'+
+        '<div class="urow-t"><a href="#" onclick="openEv(\''+e.id+'\');return false" style="color:var(--text);text-decoration:none;font-weight:600">'+esc(cit(e.name)+' · '+fmt(e.name))+'</a>'+
+        '<span class="s">HubSpot-Event · '+esc(e.type||'—')+' · '+e.regs+' Anmeldungen</span></div>'+
+        '<span class="urow-d">→</span></div>';
+    }
+    if(x.t==='ag'){
+      const a=x.ref,k=AKIND[a.kind]||AKIND.sonstiges;
+      const meta=[k.l,a.time||null,a.loc||null,a.org||null].filter(Boolean).join(' · ');
+      // Bedienelemente auf eine eigene Zeile, sonst wird die schmale Spalte zu eng
+      return '<div class="urow" style="flex-wrap:wrap"><i class="udot" style="background:'+k.c+'"></i>'+
+        '<div class="urow-t" style="white-space:normal"><span style="font-weight:600">'+esc(a.title)+'</span>'+(a.provisional?'<span class="uprov">Datum vorläufig</span>':'')+
+        '<span class="s" style="white-space:normal">'+esc(meta)+'</span></div>'+
+        '<div style="flex-basis:100%;display:flex;align-items:center;gap:6px;margin-left:18px;margin-top:7px">'+
+          '<select onchange="agStatus(\''+a.id+'\',this.value)" style="flex:1;font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--mut);font-family:var(--fb)">'+
+            Object.keys(ASTAT).map(s=>'<option value="'+s+'"'+(a.status===s?' selected':'')+'>'+ASTAT[s]+'</option>').join('')+'</select>'+
+          '<button class="ux" title="Bearbeiten" onclick="openAgModal(\''+a.id+'\')">✎</button>'+
+          '<button class="ux" title="Löschen" onclick="agDel(\''+a.id+'\')">×</button>'+
+        '</div></div>';
+    }
+    const t=x.ref,d=_pd(t.due),od=!t.done&&d&&d<t0;
+    return '<div class="urow">'+uCheck(t)+
+      '<div class="urow-t"><span style="'+(t.done?'color:var(--hint);text-decoration:line-through':(od?'color:#EF4444':''))+'">'+esc(t.l)+'</span>'+
+      '<span class="s">Frist · '+esc(uCtx(t)||APRIO[t.prio]||'')+'</span></div>'+
+      '<button class="ux" onclick="tkDel(\''+t.id+'\')">×</button></div>';
+  }).join('');
+
+  el.innerHTML='<div class="sec" style="margin-bottom:4px">'+_dLong(_uSel)+'</div>'+
+    (rows||'<div style="font-size:13px;color:var(--hint);padding-top:6px">Nichts an diesem Tag.</div>');
+}
+
+function uCheck(t){
+  return '<div class="chk'+(t.done?' on':'')+'" style="margin:0" onclick="tkTog(\''+t.id+'\')">'+
+    '<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.2 6L8 1" stroke="#BFFF00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>';
+}
+
+// Kontext eines To-dos: verknüpfter Termin oder verknüpftes HubSpot-Event
+function uCtx(t){
+  if(t.agendaId){const a=_AG.find(x=>x.id===t.agendaId);return a?a.title:'';}
+  if(t.eventId){const e=EVS.find(x=>x.id===t.eventId);return e?cit(e.name)+' · '+fmt(e.name):'';}
+  return '';
+}
+
+function rUNext(){
+  const up=uUpcoming().slice(0,7);
+  document.getElementById('u-next').innerHTML=
+    '<div class="sec" style="margin-bottom:6px">Als Nächstes</div>'+
+    (up.length?up.map(x=>{
+      if(x.t==='ev'){
+        const e=x.ref;
+        return '<div class="urow" style="cursor:pointer" onclick="openEv(\''+e.id+'\')"><i class="udot" style="background:var(--lime)"></i>'+
+          '<div class="urow-t"><span style="font-weight:600">'+esc(fmt(e.name))+'</span><span class="s">'+esc(cit(e.name))+' · HubSpot</span></div>'+
+          '<span class="urow-d">'+_dLbl(e.date)+'</span></div>';
+      }
+      const a=x.ref,k=AKIND[a.kind]||AKIND.sonstiges;
+      return '<div class="urow" style="cursor:pointer" onclick="uJump(\''+x.key+'\')"><i class="udot" style="background:'+k.c+'"></i>'+
+        '<div class="urow-t"><span style="font-weight:600">'+esc(a.title)+'</span>'+(a.provisional?'<span class="uprov">vorläufig</span>':'')+
+        '<span class="s">'+esc(k.l+(a.loc?' · '+a.loc:''))+'</span></div>'+
+        '<span class="urow-d">'+_dLbl(a.date)+'</span></div>';
+    }).join(''):'<div style="font-size:13px;color:var(--hint)">Keine anstehenden Termine.</div>');
+}
+
+function uJump(key){const d=_pd(key);if(!d)return;_uY=d.getFullYear();_uM=d.getMonth();_uSel=key;rUCal();rUDay();}
+
+function rUTodo(){
+  const t0=_tod();
+  const open=_TK.filter(t=>!t.done).sort((a,b)=>{
+    const x=_pd(a.due),y=_pd(b.due);
+    if(!x&&!y)return 0;if(!x)return 1;if(!y)return -1;return x-y;
+  });
+  const done=_TK.filter(t=>t.done);
+  const row=t=>{
+    const d=_pd(t.due),od=!t.done&&d&&d<t0;
+    const ctx=uCtx(t);
+    return '<div class="urow">'+uCheck(t)+
+      '<div class="urow-t"><span style="'+(t.done?'color:var(--hint);text-decoration:line-through':'')+'">'+esc(t.l)+'</span>'+
+      (ctx||t.note?'<span class="s">'+esc([ctx,t.note].filter(Boolean).join(' · '))+'</span>':'')+'</div>'+
+      (t.prio==='hoch'&&!t.done?'<span class="b b-up">Hoch</span>':'')+
+      '<span class="urow-d" style="'+(od?'color:#EF4444;font-weight:600':'')+'">'+(t.due?_dLbl(t.due)+(od?' · überfällig':''):'ohne Frist')+'</span>'+
+      '<button class="ux" onclick="tkDel(\''+t.id+'\')">×</button></div>';
+  };
+  document.getElementById('u-todo').innerHTML=
+    '<div class="fb mb12"><div class="sec" style="margin-bottom:0">To-dos</div>'+
+      '<span style="font-size:11px;color:var(--hint)">'+open.length+' offen · '+done.length+' erledigt</span></div>'+
+    (open.length?open.map(row).join(''):'<div style="font-size:13px;color:var(--hint)">Keine offenen To-dos.</div>')+
+    (done.length?'<details style="margin-top:14px"><summary style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hint);cursor:pointer">Erledigt ('+done.length+')</summary><div style="margin-top:8px">'+done.map(row).join('')+'</div></details>':'');
+}
+
+// Termine, deren Datum noch gar nicht feststeht
+function rUOpen(){
+  const el=document.getElementById('u-open');
+  const none=_AG.filter(a=>!a.date);
+  if(!none.length){el.innerHTML='';return;}
+  el.innerHTML='<div class="card"><div class="sec">Termin steht noch nicht fest</div>'+
+    none.map(a=>{
+      const k=AKIND[a.kind]||AKIND.sonstiges;
+      return '<div class="urow"><i class="udot" style="background:'+k.c+'"></i>'+
+        '<div class="urow-t"><span style="font-weight:600">'+esc(a.title)+'</span><span class="s">'+esc([k.l,a.loc,a.org].filter(Boolean).join(' · '))+'</span></div>'+
+        '<button class="ux" onclick="openAgModal(\''+a.id+'\')">✎</button>'+
+        '<button class="ux" onclick="agDel(\''+a.id+'\')">×</button></div>';
+    }).join('')+'</div>';
+}
+
+// ── Termine schreiben ───────────────────────────────────────
+function openAgModal(id){
+  _agEdit=id||null;
+  const a=id?_AG.find(x=>x.id===id):null;
+  document.getElementById('um-title').textContent=a?'Termin bearbeiten':'Neuer Termin';
+  document.getElementById('um-save').textContent=a?'Änderungen speichern':'Termin speichern';
+  document.getElementById('um-t').value=a?a.title:'';
+  document.getElementById('um-k').value=a?a.kind:'sonstiges';
+  document.getElementById('um-st').value=a?a.status:'geplant';
+  document.getElementById('um-d').value=a&&a.date?a.date.slice(0,10):(_uSel||'');
+  document.getElementById('um-ti').value=a?a.time:'';
+  document.getElementById('um-pv').checked=a?a.provisional:false;
+  document.getElementById('um-l').value=a?a.loc:'';
+  document.getElementById('um-o').value=a?a.org:'';
+  document.getElementById('um-n').value=a?a.note:'';
+  document.getElementById('umodal').classList.add('on');
+}
+function closeAgModal(){document.getElementById('umodal').classList.remove('on');_agEdit=null;}
+
+async function subAg(){
+  const title=document.getElementById('um-t').value.trim();
+  if(!title){alert('Titel fehlt');return;}
+  const body={
+    title:title,
+    kind:document.getElementById('um-k').value,
+    status:document.getElementById('um-st').value,
+    date:document.getElementById('um-d').value||null,
+    time:document.getElementById('um-ti').value||null,
+    provisional:document.getElementById('um-pv').checked,
+    loc:document.getElementById('um-l').value.trim(),
+    org:document.getElementById('um-o').value.trim(),
+    note:document.getElementById('um-n').value.trim()
+  };
+  const btn=document.getElementById('um-save'),old=btn.textContent;
+  btn.textContent='Speichert…';btn.disabled=true;
+  try{
+    if(_agEdit){
+      body.id=_agEdit;
+      const row=await apiFetch('PUT','agenda_items',{},body);
+      _AG=_AG.map(a=>a.id===row.id?row:a);
+    }else{
+      _AG.push(await apiFetch('POST','agenda_items',{},body));
+    }
+    closeAgModal();rU();
+  }catch(e){alert('Speichern fehlgeschlagen: '+e.message);}
+  finally{btn.textContent=old;btn.disabled=false;}
+}
+
+async function agStatus(id,status){
+  const a=_AG.find(x=>x.id===id);if(!a)return;
+  const prev=a.status;a.status=status;rU();   // optimistisch
+  try{await apiFetch('PUT','agenda_items',{},Object.assign({},a,{id:id,status:status}));}
+  catch(e){a.status=prev;rU();alert('Status konnte nicht gespeichert werden: '+e.message);}
+}
+
+async function agDel(id){
+  const a=_AG.find(x=>x.id===id);if(!a)return;
+  if(!confirm('Termin „'+a.title+'“ löschen? Die daran hängenden To-dos werden mitgelöscht.'))return;
+  const keepA=_AG,keepT=_TK;
+  _AG=_AG.filter(x=>x.id!==id);_TK=_TK.filter(t=>t.agendaId!==id);rU();
+  try{await apiFetch('DELETE','agenda_items',{id:id});}
+  catch(e){_AG=keepA;_TK=keepT;rU();alert('Löschen fehlgeschlagen: '+e.message);}
+}
+
+// ── To-dos schreiben ────────────────────────────────────────
+function openTkModal(link){
+  document.getElementById('tm-l').value='';
+  document.getElementById('tm-d').value=_uSel||'';
+  document.getElementById('tm-p').value='normal';
+  document.getElementById('tm-n').value='';
+  const sel=document.getElementById('tm-r');
+  sel.innerHTML='<option value="">— ohne Verknüpfung —</option>'+
+    (_AG.length?'<optgroup label="Termine">'+_AG.map(a=>'<option value="a:'+a.id+'">'+esc(a.title)+'</option>').join('')+'</optgroup>':'')+
+    (EVS.length?'<optgroup label="HubSpot-Events">'+EVS.map(e=>'<option value="e:'+e.id+'">'+esc(cit(e.name)+' · '+fmt(e.name))+'</option>').join('')+'</optgroup>':'');
+  sel.value=link||'';
+  document.getElementById('tmodal').classList.add('on');
+}
+function closeTkModal(){document.getElementById('tmodal').classList.remove('on');}
+
+async function subTk(){
+  const label=document.getElementById('tm-l').value.trim();
+  if(!label){alert('Aufgabe fehlt');return;}
+  const link=document.getElementById('tm-r').value;
+  const body={
+    l:label,
+    due:document.getElementById('tm-d').value||null,
+    prio:document.getElementById('tm-p').value,
+    note:document.getElementById('tm-n').value.trim(),
+    agendaId:link.startsWith('a:')?link.slice(2):null,
+    eventId:link.startsWith('e:')?link.slice(2):null
+  };
+  if(body.eventId)body.event=_eventMeta(body.eventId);
+  const btn=document.getElementById('tm-save'),old=btn.textContent;
+  btn.textContent='Speichert…';btn.disabled=true;
+  try{
+    _TK.push(await apiFetch('POST','tasks',{},body));
+    _syncT();closeTkModal();rU();rPl();
+    if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();
+  }catch(e){alert('Speichern fehlgeschlagen: '+e.message);}
+  finally{btn.textContent=old;btn.disabled=false;}
+}
+
+// Abhaken: optimistisch, bei Fehler zurückrollen
+async function tkTog(id){
+  const t=_TK.find(x=>x.id===id);if(!t)return;
+  t.done=!t.done;_syncT();rU();rPl();
+  if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();
+  try{await apiFetch('PUT','tasks',{},{id:id,done:t.done});}
+  catch(e){t.done=!t.done;_syncT();rU();rPl();alert('Konnte nicht gespeichert werden: '+e.message);}
+}
+
+async function tkDel(id){
+  const keep=_TK.slice();
+  _TK=_TK.filter(t=>t.id!==id);_syncT();rU();rPl();
+  if(_SEL&&document.getElementById('v-d').style.display!=='none')rDPl();
+  try{await apiFetch('DELETE','tasks',{id:id});}
+  catch(e){_TK=keep;_syncT();rU();rPl();alert('Löschen fehlgeschlagen: '+e.message);}
+}
+
+// Deep-Link: ?event=<events.id> springt direkt in die Event-Detailansicht
+function _deepLink(){
+  const id=new URLSearchParams(location.search).get('event');
+  if(!id)return false;
+  if(!EVS.some(e=>e.id===id))return false;
+  openEv(id);
+  return true;
+}
+
+/* ═══════════════════════════════════════════════════════════
    HUBSPOT LIVE DATA
    Lädt Events und Event-Kontakte via /.netlify/functions/hubspot
    Fallback: lokale EVS-Daten bleiben wenn Fetch fehlschlägt
@@ -1815,6 +2331,8 @@ async function hsLoadEvents(){
     Object.keys(_PA_CACHE).forEach(function(k){delete _PA_CACHE[k];});
     popSels();
     rAll();
+    rU();
+    if(_VIEW!=='d')_deepLink();
     var s = document.getElementById('m-s');
     if(s) s.textContent = 'Netzwerkmarketing · '+EVS.length+' Events aus HubSpot';
     apiFetch('POST','events',{},{events:EVS}).catch(function(e){console.warn('syncEvents:',e.message);});
@@ -1977,6 +2495,7 @@ rPa = function(){
 // Beim Laden: Finanzdaten + Events aus HubSpot
 document.addEventListener('DOMContentLoaded', function(){
   apiLoadFinancials();
+  apiLoadUeber();
   hsLoadEvents();
 });
 </script>
